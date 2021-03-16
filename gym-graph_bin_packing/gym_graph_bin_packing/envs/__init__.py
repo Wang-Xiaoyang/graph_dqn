@@ -1,0 +1,1 @@
+from gym_graph_bin_packing.envs.graph_bin_packing_env import GraphVbppEnv
