@@ -1,0 +1,7 @@
+README.md
+setup.py
+gym_graph_bin_packing.egg-info/PKG-INFO
+gym_graph_bin_packing.egg-info/SOURCES.txt
+gym_graph_bin_packing.egg-info/dependency_links.txt
+gym_graph_bin_packing.egg-info/requires.txt
+gym_graph_bin_packing.egg-info/top_level.txt
