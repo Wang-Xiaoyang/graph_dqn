@@ -31,7 +31,7 @@ class GraphVbppEnv(gym.Env):
         # Define action and observation space
         self.action_space = spaces.Discrete(self.n_bins)
         self.observation_space = spaces.Box(low=0, high=1, shape=
-                        (self.n_bins, self.n_items), dtype=np.float32)
+                        (self.n_bins, self.n_items), dtype=np.float64)
 
     def step(self, a):
         # Execute one time step within the environment
@@ -46,7 +46,6 @@ class GraphVbppEnv(gym.Env):
             return self.adjacency_mat, r, done, {}
 
         # check the remaining capacity of j_th bin
-        self.adjacency_mat[:,a]
         for i in range(self.vector_dim):
             items_total = np.dot(self.items[i], self.adjacency_mat[:,a])
             if items_total + self.items[i][self.cur_item] > self.bin_capacity[i]:
@@ -84,6 +83,7 @@ class GraphVbppEnv(gym.Env):
         self.cur_item = 0
         # reset adjacency matrix
         self.adjacency_mat = np.zeros([self.n_items, self.n_bins])
+        return self.adjacency_mat # return s_0
 
 
     def render(self, mode='human', close=False):
