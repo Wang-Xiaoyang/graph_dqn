@@ -25,7 +25,7 @@ class GraphVbppEnv(gym.Env):
         # current item to be places
         self.cur_item = 0
         
-        # init adjacency matrix
+        # init adjacency matrix; this is the adjacency mat in terms of bin packing: [n_items, n_bins]
         self.adjacency_mat = np.zeros([self.n_items, self.n_bins])
 
         # Define action and observation space
@@ -37,6 +37,8 @@ class GraphVbppEnv(gym.Env):
         # Execute one time step within the environment
         # action: put i_th item to j_th bin; action = j, i is an env variable
         done = False
+
+        self.adjacency_mat_pre = self.adjacency_mat.copy()
 
         # check the number of items already in the j_th bin
         if sum(self.adjacency_mat[:, a]) >= self.bin_load_capacity:
@@ -59,16 +61,18 @@ class GraphVbppEnv(gym.Env):
         self.cur_item += 1
 
         if self.cur_item >= self.n_items:
+            self.cur_item = 0
             done = True
         
         return self.adjacency_mat, r, done, {}
 
     def get_reward(self):
         # get the reward from current adjacency matrix
-        r = sum(sum(self.adjacency_mat))
-        if r == self.n_items: # all items places, sucessfully finished
+        r = sum(sum(self.adjacency_mat)) - sum(sum(self.adjacency_mat_pre))
+        # all items places, ep finished - bonus reward for occupied bins
+        if sum(sum(self.adjacency_mat)) == self.n_items:
             occupied_bins = sum(self.adjacency_mat) > 0
-            r += r * (self.n_bins - sum(occupied_bins))
+            r += self.n_items * (self.n_bins - sum(occupied_bins))
         return r
 
 
