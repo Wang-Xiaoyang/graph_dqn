@@ -14,6 +14,9 @@ from graph_dqn_utilities import *
 
 import wandb
 
+# !!!! to check:
+# the direction of graph (directed and undirected, what is difference in results)
+
 # wandb log
 wandb.init(entity="xiaoyang",
             project="graph-q-learning")

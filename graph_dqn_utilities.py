@@ -34,6 +34,8 @@ class GQN(nn.Module):
         with g.local_scope():
             g.ndata['h'] = h
             # Calculate graph representation by sum readout.
+            # note: this is doing graph polling - check the normalization; check data dimension
+            # better pooling options? currently, f(sum h_v (nodes)) = Q(s,a)
             hg = dgl.sum_nodes(g, 'h',)
             return self.linear(hg)
 
