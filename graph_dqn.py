@@ -14,12 +14,18 @@ from graph_dqn_utilities import *
 
 import wandb
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # !!!! to check:
 # the direction of graph (directed and undirected, what is difference in results)
 
 # wandb log
 wandb.init(entity="xiaoyang",
             project="graph-q-learning")
+
+#env config
+wandb.config.N_RUs = 20
+wandb.config.N_DUs = 4
 
 wandb.config.N_EPS = 2000
 wandb.config.BUFFER_LEN = 10000
@@ -41,7 +47,7 @@ def choose_action(env, epsilon, g):
     if np.random.uniform(0,1) >= epsilon:
         nodes_RU, nodes_Du = state_to_node_fea(env)
         with torch.no_grad():
-            features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+            features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
             g.ndata['x'] = features
             Q_values = []
             for i in range(env.n_bins):
@@ -63,7 +69,7 @@ def model_validate():
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
 
     done = False
     while not done:
@@ -75,7 +81,7 @@ def model_validate():
         u, v = adjacency_vbpp_to_graph(ob_)
         nodes_RU, nodes_DU = state_to_node_fea(env)
         g = dgl.graph((u, v), num_nodes=n_nodes)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
         state_ = g
     return ep_reward
 
@@ -96,8 +102,8 @@ validation_eps = config.validation_eps
 memory = Memory(max_size=BUFFER_LEN)
 
 # initialize two graph neural nets: Q_net, Q_net_
-Q_net = GQN(3, 8).double()
-Q_net_ = GQN(3, 8).double()
+Q_net = GQN(3, 8).double().to(device=device)
+Q_net_ = GQN(3, 8).double().to(device=device)
 # copy parameters
 Q_net_.load_state_dict(Q_net.state_dict())
 # define optimizer
@@ -124,8 +130,8 @@ for ii in range(N_EPS):
     ob = env.reset()
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
-    g = dgl.graph((u, v), num_nodes=n_nodes)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+    g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
+    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
 
     done = False
     while not done:        
@@ -139,12 +145,12 @@ for ii in range(N_EPS):
         u, v = adjacency_vbpp_to_graph(ob_)
         nodes_RU, nodes_DU = state_to_node_fea(env)
         g = dgl.graph((u, v), num_nodes=n_nodes)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
         state_ = g
         # next state / action pairs (for all possible actions)
         state_action_ = []
         for t in range(env.action_space.n):
-            g_tmp = copy_graph(g, 'x')
+            g_tmp = copy_graph(g, 'x').to(device)
             g_tmp.add_edges([env.cur_item], t+n_RUs)
             state_action_.append(g_tmp)
 
@@ -155,15 +161,15 @@ for ii in range(N_EPS):
         if len(memory.buffer) >= BATCH_SIZE:
             batch = memory.sample(BATCH_SIZE)
             # get state, action, reward and the next state
-            states_actions = dgl.batch([item[0] for item in batch])
-            actions = torch.DoubleTensor([item[1] for item in batch])
+            states_actions = dgl.batch([item[0] for item in batch]).to(device)
+            actions = torch.DoubleTensor([item[1] for item in batch]).to(device)
             rewards = torch.DoubleTensor([item[2] for item in batch]).to(device)
 
             states_actions_batch = []
             for item in batch:
                 for k in range(env.action_space.n):
                     states_actions_batch.append(item[3][k])
-            states_actions_ = dgl.batch(states_actions_batch) # the length of this batch is longer than others, for multiple actions
+            states_actions_ = dgl.batch(states_actions_batch).to(device) # the length of this batch is longer than others, for multiple actions
 
             done_info = [item[4] for item in batch]
 

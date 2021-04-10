@@ -10,7 +10,7 @@ class GraphVbppEnv(gym.Env):
     def __init__(self):
         super(GraphVbppEnv, self).__init__()
         # define env constants
-        self.n_items, self.n_bins = 10, 2
+        self.n_items, self.n_bins = 20, 4
         self.vector_dim = 1 # the dim of each item and bin
         self.bin_capacity = 100 * np.ones(self.vector_dim)
         self.bin_load_capacity = 10 # the max number of items to be placed in one bin
