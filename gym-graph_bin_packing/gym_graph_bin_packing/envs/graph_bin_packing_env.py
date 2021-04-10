@@ -72,7 +72,8 @@ class GraphVbppEnv(gym.Env):
         # all items places, ep finished - bonus reward for occupied bins
         if sum(sum(self.adjacency_mat)) == self.n_items:
             occupied_bins = sum(self.adjacency_mat) > 0
-            r += self.n_items * (self.n_bins - sum(occupied_bins))
+            # r += self.n_items * (self.n_bins - sum(occupied_bins))
+            r *= (self.n_bins - sum(occupied_bins))
         return r
 
 

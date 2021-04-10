@@ -38,8 +38,7 @@ wandb.config.epsilon_min = 0.0005
 wandb.config.validation_eps = 20
 config = wandb.config
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
@@ -55,7 +54,7 @@ def choose_action(env, epsilon, g):
                 inputs = g.ndata['x']
                 value = Q_net(g, inputs)
                 Q_values.append(sum(value))
-                g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1])) # remove the newly added edge
+                g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1]).to(device)) # remove the newly added edge
         a = np.argmax(Q_values)
     else:
         a = env.action_space.sample()
@@ -68,7 +67,7 @@ def model_validate():
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
-    g = dgl.graph((u, v), num_nodes=n_nodes)
+    g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
     g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
 
     done = False
@@ -80,7 +79,7 @@ def model_validate():
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
         nodes_RU, nodes_DU = state_to_node_fea(env)
-        g = dgl.graph((u, v), num_nodes=n_nodes)
+        g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
         g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
         state_ = g
     return ep_reward
@@ -144,7 +143,7 @@ for ii in range(N_EPS):
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
         nodes_RU, nodes_DU = state_to_node_fea(env)
-        g = dgl.graph((u, v), num_nodes=n_nodes)
+        g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
         g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
         state_ = g
         # next state / action pairs (for all possible actions)

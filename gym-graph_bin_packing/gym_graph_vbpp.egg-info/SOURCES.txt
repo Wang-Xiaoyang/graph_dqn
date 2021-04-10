@@ -1,7 +1,0 @@
-README.md
-setup.py
-gym_graph_vbpp.egg-info/PKG-INFO
-gym_graph_vbpp.egg-info/SOURCES.txt
-gym_graph_vbpp.egg-info/dependency_links.txt
-gym_graph_vbpp.egg-info/requires.txt
-gym_graph_vbpp.egg-info/top_level.txt
