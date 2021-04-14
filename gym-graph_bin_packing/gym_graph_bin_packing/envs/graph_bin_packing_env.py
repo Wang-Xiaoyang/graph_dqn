@@ -74,8 +74,7 @@ class GraphVbppEnv(gym.Env):
         if sum(sum(self.adjacency_mat)) == self.n_items:
             occupied_bins = sum(self.adjacency_mat) > 0
             # the lower bound for occupied bins, if all items places
-            lb_bins = max(self.n_items / self.bin_load_capacity, sum(self.items) / self.C)
-            lb_bins = np.ceil(lb_bins)
+            lb_bins = np.ceil(self.n_items / self.bin_load_capacity)
             # r += self.n_items * (self.n_bins - sum(occupied_bins))
             r += lb_bins / (sum(occupied_bins)) * 20
             # r += (self.n_bins - sum(occupied_bins))
