@@ -14,7 +14,9 @@ from graph_dqn_utilities import *
 
 import wandb
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+device = "cpu"
 
 # !!!! to check:
 # the direction of graph (directed and undirected, what is difference in results)
@@ -38,8 +40,6 @@ wandb.config.epsilon_min = 0.0005
 wandb.config.validation_eps = 20
 config = wandb.config
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
     # g is the graph
@@ -52,8 +52,10 @@ def choose_action(env, epsilon, g):
             for i in range(env.n_bins):
                 g.add_edges([env.cur_item], i+env.n_items)
                 inputs = g.ndata['x']
+                g = g.to(device)
                 value = Q_net(g, inputs).detach()
                 Q_values.append(sum(value))
+                g = g.to('cpu')
                 g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1])) # remove the newly added edge
         a = np.argmax(Q_values)
     else:
@@ -124,7 +126,6 @@ wandb.watch(Q_net)
 step = 0
 ep_rewards = []
 for ii in range(N_EPS):
-    print('EP: ', ii)
     ep_reward = 0
     # reset and get the init state
     ob = env.reset()
