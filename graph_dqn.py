@@ -46,7 +46,7 @@ def choose_action(env, epsilon, g):
     if np.random.uniform(0,1) >= epsilon:
         nodes_RU, nodes_Du = state_to_node_fea(env)
         with torch.no_grad():
-            features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
+            features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
             g.ndata['x'] = features
             Q_values = []
             for i in range(env.n_bins):
@@ -54,7 +54,7 @@ def choose_action(env, epsilon, g):
                 inputs = g.ndata['x']
                 value = Q_net(g, inputs).detach()
                 Q_values.append(sum(value))
-                g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1]).to(device)) # remove the newly added edge
+                g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1])) # remove the newly added edge
         a = np.argmax(Q_values)
     else:
         a = env.action_space.sample()
@@ -67,8 +67,8 @@ def model_validate():
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
-    g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
+    g = dgl.graph((u, v), num_nodes=n_nodes)
+    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
 
     done = False
     while not done:
@@ -79,8 +79,8 @@ def model_validate():
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
         nodes_RU, nodes_DU = state_to_node_fea(env)
-        g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
+        g = dgl.graph((u, v), num_nodes=n_nodes)
+        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
         state_ = g
     return ep_reward
 
@@ -130,8 +130,8 @@ for ii in range(N_EPS):
     ob = env.reset()
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
-    g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
+    g = dgl.graph((u, v), num_nodes=n_nodes)
+    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
 
     done = False
     while not done:        
@@ -145,8 +145,8 @@ for ii in range(N_EPS):
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
         nodes_RU, nodes_DU = state_to_node_fea(env)
-        g = dgl.graph((u, v), num_nodes=n_nodes).to(device)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double).to(device)
+        g = dgl.graph((u, v), num_nodes=n_nodes)
+        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
         state_ = g
         # next state / action pairs (for all possible actions)
         state_action_ = []
