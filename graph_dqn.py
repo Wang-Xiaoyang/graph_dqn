@@ -124,6 +124,7 @@ wandb.watch(Q_net)
 step = 0
 ep_rewards = []
 for ii in range(N_EPS):
+    print('EP: ', ii)
     ep_reward = 0
     # reset and get the init state
     ob = env.reset()
@@ -137,6 +138,7 @@ for ii in range(N_EPS):
         a = choose_action(env, epsilon, g)
         a_graph = [env.cur_item, a+env.n_items] # action in graph format: u-->v, forms an edge
         g.add_edges([a_graph[0]], a_graph[1])
+
         state_action = g
         ob_, r, done, _ = env.step(a)
         ep_reward += r
@@ -149,7 +151,7 @@ for ii in range(N_EPS):
         # next state / action pairs (for all possible actions)
         state_action_ = []
         for t in range(env.action_space.n):
-            g_tmp = copy_graph(g, 'x').to(device)
+            g_tmp = copy_graph(g, 'x')
             g_tmp.add_edges([env.cur_item], t+n_RUs)
             state_action_.append(g_tmp)
 
