@@ -52,7 +52,7 @@ def choose_action(env, epsilon, g):
             for i in range(env.n_bins):
                 g.add_edges([env.cur_item], i+env.n_items)
                 inputs = g.ndata['x']
-                value = Q_net(g, inputs)
+                value = Q_net(g, inputs).detach()
                 Q_values.append(sum(value))
                 g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1]).to(device)) # remove the newly added edge
         a = np.argmax(Q_values)
