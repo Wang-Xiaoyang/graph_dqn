@@ -12,7 +12,8 @@ class GraphVbppEnv(gym.Env):
         # define env constants
         self.n_items, self.n_bins = 20, 4
         self.vector_dim = 1 # the dim of each item and bin
-        self.bin_capacity = 100 * np.ones(self.vector_dim)
+        self.C = 100 # bin capacity
+        self.bin_capacity = self.C * np.ones(self.vector_dim)
         self.bin_load_capacity = 10 # the max number of items to be placed in one bin
         self.bins = [self.bin_capacity] * self.n_bins # init bins
         self.item_value_max, self.item_value_min = [10], [1]
@@ -72,8 +73,12 @@ class GraphVbppEnv(gym.Env):
         # all items places, ep finished - bonus reward for occupied bins
         if sum(sum(self.adjacency_mat)) == self.n_items:
             occupied_bins = sum(self.adjacency_mat) > 0
+            # the lower bound for occupied bins, if all items places
+            lb_bins = max(self.n_items / self.bin_load_capacity, sum(self.items) / self.C)
+            lb_bins = np.ceil(lb_bins)
             # r += self.n_items * (self.n_bins - sum(occupied_bins))
-            r *= (self.n_bins - sum(occupied_bins))
+            r += lb_bins / (sum(occupied_bins)) * 20
+            # r += (self.n_bins - sum(occupied_bins))
         return r
 
 
