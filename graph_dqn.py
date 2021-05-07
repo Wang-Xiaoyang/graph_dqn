@@ -10,11 +10,13 @@ import torch.nn.functional as F
 from dgl.nn.pytorch import GraphConv
 import networkx as nx
 
+import gc
+
 from graph_dqn_utilities import *
 
 import wandb
 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 device = "cpu"
 
@@ -49,14 +51,16 @@ def choose_action(env, epsilon, g):
             features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
             g.ndata['x'] = features
             Q_values = []
-            for i in range(env.n_bins):
-                g.add_edges([env.cur_item], i+env.n_items)
-                inputs = g.ndata['x']
-                g = g.to(device)
-                value = Q_net(g, inputs).detach()
-                Q_values.append(sum(value))
-                g = g.to('cpu')
-                g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1])) # remove the newly added edge
+            with g.local_scope():
+                for i in range(env.n_bins):
+                    g.add_edges([env.cur_item], i+env.n_items)
+                    g = g.to(device)
+                    # make sure inputs and g are on the same device
+                    inputs = g.ndata['x']
+                    value = Q_net(g, inputs).detach()
+                    Q_values.append(sum(value))
+                    g = g.to('cpu')
+                    g = dgl.remove_edges(g, torch.tensor([g.num_edges()-1])) # remove the newly added edge
         a = np.argmax(Q_values)
     else:
         a = env.action_space.sample()
@@ -141,6 +145,9 @@ for ii in range(N_EPS):
         g.add_edges([a_graph[0]], a_graph[1])
 
         state_action = g
+        del g
+        gc.collect()
+        
         ob_, r, done, _ = env.step(a)
         ep_reward += r
         # new ob to new state
@@ -148,13 +155,16 @@ for ii in range(N_EPS):
         nodes_RU, nodes_DU = state_to_node_fea(env)
         g = dgl.graph((u, v), num_nodes=n_nodes)
         g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
-        state_ = g
+        state_ = g        
         # next state / action pairs (for all possible actions)
         state_action_ = []
         for t in range(env.action_space.n):
-            g_tmp = copy_graph(g, 'x')
-            g_tmp.add_edges([env.cur_item], t+n_RUs)
-            state_action_.append(g_tmp)
+            with g.local_scope():
+                g_tmp = copy_graph(g, 'x')
+                g_tmp.add_edges([env.cur_item], t+n_RUs)
+                state_action_.append(g_tmp)
+            del g_tmp
+            gc.collect()
 
         # add to memory
         memory.add((state_action, a_graph, r, state_action_, done))
@@ -180,11 +190,13 @@ for ii in range(N_EPS):
             # next_q_values = max_a Q_target(s',a)
             next_q_values_all = Q_net_(states_actions_, states_actions_.ndata['x']).detach()
             next_q_values = torch.max(next_q_values_all.reshape(BATCH_SIZE, n_actions), axis=1).values
+            next_q_values = next_q_values.to(device)
             q_targets = rewards + GAMMA * torch.mul(next_q_values, non_final_mask).to(device) 
             q_targets = torch.unsqueeze(q_targets, 1).to(device)
 
             # q_values for current Q(s,a)
-            q_values = Q_net(states_actions, states_actions.ndata['x'])
+            in_fea = states_actions.ndata['x'].to(device)
+            q_values = Q_net(states_actions, in_fea)
 
             # one step of back prop
             optimizer.zero_grad() # clear gradient

@@ -4,6 +4,8 @@ import torch
 from collections import deque
 import matplotlib.pyplot as plt
 
+import gc
+
 import dgl
 import torch.nn as nn
 import torch.nn.functional as F
@@ -41,12 +43,16 @@ class GQN(nn.Module):
 
 def copy_graph(g, fea_name):
     # copy a graph
-    src = g.edges()[0]
-    dst = g.edges()[1]
-    num_nodes = g.num_nodes()
-    g_copy = dgl.graph((src, dst), num_nodes=num_nodes)
-    fea = torch.clone(g.ndata[fea_name])
-    g_copy.ndata[fea_name] = fea
+    with g.local_scope():
+        src = g.edges()[0]
+        dst = g.edges()[1]
+        num_nodes = g.num_nodes()
+        g_copy = dgl.graph((src, dst), num_nodes=num_nodes)
+        fea = torch.clone(g.ndata[fea_name])
+        g_copy.ndata[fea_name] = fea
+    # try it out
+    del g
+    gc.collect()
     return g_copy
 
 # replay buffer using deque
