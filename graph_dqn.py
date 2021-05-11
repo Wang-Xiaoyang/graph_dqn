@@ -16,9 +16,9 @@ from graph_dqn_utilities import *
 
 import wandb
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-device = "cpu"
+#device = "cpu"
 
 # !!!! to check:
 # the direction of graph (directed and undirected, what is difference in results)
@@ -31,9 +31,9 @@ wandb.init(entity="xiaoyang",
 wandb.config.N_RUs = 20
 wandb.config.N_DUs = 4
 
-wandb.config.N_EPS = 2000
+wandb.config.N_EPS = 200
 wandb.config.BUFFER_LEN = 10000
-wandb.config.BATCH_SIZE = 500
+wandb.config.batch_size = 128
 wandb.config.GAMMA = 0.98
 wandb.config.LEARNING_RATE = 0.005
 wandb.config.UPDATE_STEP = 20
@@ -93,7 +93,7 @@ def model_validate():
 # parameters
 N_EPS = config.N_EPS
 BUFFER_LEN = config.BUFFER_LEN
-BATCH_SIZE = config.BATCH_SIZE
+batch_size = config.batch_size
 GAMMA = config.GAMMA
 LEARNING_RATE = config.LEARNING_RATE
 UPDATE_STEP = config.UPDATE_STEP
@@ -170,8 +170,8 @@ for ii in range(N_EPS):
         memory.add((state_action, a_graph, r, state_action_, done))
         state = state_
 
-        if len(memory.buffer) >= BATCH_SIZE:
-            batch = memory.sample(BATCH_SIZE)
+        if len(memory.buffer) >= batch_size:
+            batch = memory.sample(batch_size)
             # get state, action, reward and the next state
             states_actions = dgl.batch([item[0] for item in batch]).to(device)
             actions = torch.DoubleTensor([item[1] for item in batch]).to(device)
@@ -189,7 +189,7 @@ for ii in range(N_EPS):
             non_final_mask = torch.tensor(list(map(lambda s: s is not True, done_info)), dtype=torch.float32).to(device) #
             # next_q_values = max_a Q_target(s',a)
             next_q_values_all = Q_net_(states_actions_, states_actions_.ndata['x']).detach()
-            next_q_values = torch.max(next_q_values_all.reshape(BATCH_SIZE, n_actions), axis=1).values
+            next_q_values = torch.max(next_q_values_all.reshape(batch_size, n_actions), axis=1).values
             next_q_values = next_q_values.to(device)
             q_targets = rewards + GAMMA * torch.mul(next_q_values, non_final_mask).to(device) 
             q_targets = torch.unsqueeze(q_targets, 1).to(device)
@@ -210,6 +210,7 @@ for ii in range(N_EPS):
     
     epsilon = max((epsilon-epsilon_step), epsilon_min)
     # ep_rewards.append(ep_reward)
+    # log results after each game episode
     wandb.log({"ep score": ep_reward, "env step": step})
 
 for ii in range(validation_eps):
