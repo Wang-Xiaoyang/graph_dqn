@@ -24,12 +24,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # the direction of graph (directed and undirected, what is difference in results)
 
 # wandb log
+# wandb.init(entity="xiaoyang",
+#             project="graph-q-learning")
 wandb.init(entity="xiaoyang",
-            project="graph-q-learning")
+            project="graph-q-learning-compare")
 
 #env config
 wandb.config.N_RUs = 20
-wandb.config.N_DUs = 4
+wandb.config.N_DUs = 3
+wandb.config.model = 'GCN'
 
 wandb.config.N_EPS = 200
 wandb.config.BUFFER_LEN = 10000
@@ -68,7 +71,7 @@ def choose_action(env, epsilon, g):
 
 def model_validate():
     ep_reward = 0
-    ob = env.reset()
+    ob = env.reset(config.N_RUs, config.N_DUs)
 
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
@@ -118,7 +121,7 @@ loss_MSE = nn.MSELoss().to(device)
 
 # make env
 env = gym.make("gym_graph_bin_packing:graph_vbpp-v0")
-env.reset()
+env.reset(config.N_RUs, config.N_DUs)
 n_RUs, n_DUs = env.n_items, env.n_bins
 n_nodes = n_RUs + n_DUs
 n_actions = env.action_space.n
@@ -132,7 +135,7 @@ ep_rewards = []
 for ii in range(N_EPS):
     ep_reward = 0
     # reset and get the init state
-    ob = env.reset()
+    ob = env.reset(config.N_RUs, config.N_DUs)
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)

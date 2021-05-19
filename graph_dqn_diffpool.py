@@ -18,22 +18,26 @@ from graph_dqn_utilities import *
 
 import wandb
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-device = "cpu"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = "cpu"
+if torch.cuda.is_available():
+    torch.cuda.set_device(0)
 
 # !!!! to check:
 # the direction of graph (directed and undirected, what is difference in results)
 
 # wandb log
+# wandb.init(entity="xiaoyang",
+#             project="graph-q-learning-diffpool")
 wandb.init(entity="xiaoyang",
-            project="graph-q-learning-diffpool")
+            project="graph-q-learning-compare")
 
 #env config
 wandb.config.N_RUs = 20
 wandb.config.N_DUs = 4
 wandb.config.input_dim = 3 # feature dimension of nodes
 # GCN model config
+wandb.config.model = 'DiffPool'
 wandb.config.hidden_dim = 8 # hidden dimension of GCN
 wandb.config.Q_value_dim = 1 # Q values are 1-d numbers
 wandb.config.gc_per_block = 2 # 2 GCN layers in each clustered graph
@@ -65,8 +69,7 @@ def choose_action(env, epsilon, g):
                 for i in range(env.n_bins):
                     g.add_edges([env.cur_item], i+env.n_items)
                     g = g.to(device)
-                    # make sure inputs and g are on the same device
-                    inputs = g.ndata['feat']
+                    # # make sure inputs and g are on the same device
                     value = model(g).detach()
                     Q_values.append(sum(value))
                     g = g.to('cpu')
@@ -78,7 +81,7 @@ def choose_action(env, epsilon, g):
 
 def model_validate():
     ep_reward = 0
-    ob = env.reset()
+    ob = env.reset(config.N_RUs, config.N_DUs)
 
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
@@ -166,17 +169,19 @@ model_ = DiffPool(config.input_dim,
 # copy parameters
 model_.load_state_dict(model.state_dict())
 
+print("model init finished")
+print("MODEL:::::::", "DiffPool")
+if device.type == "cuda":
+    model = model.cuda()
+    model_ = model_.cuda()
+
 optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad,
                                     model.parameters()), lr=0.001)
 
-print("model init finished")
-print("MODEL:::::::", "DiffPool")
-if device == "cuda":
-    model = model.cuda()
 
 # make env
 env = gym.make("gym_graph_bin_packing:graph_vbpp-v0")
-env.reset()
+env.reset(config.N_RUs, config.N_DUs)
 n_RUs, n_DUs = env.n_items, env.n_bins
 n_nodes = n_RUs + n_DUs
 n_actions = env.action_space.n
@@ -190,7 +195,7 @@ ep_rewards = []
 for ii in range(N_EPS):
     ep_reward = 0
     # reset and get the init state
-    ob = env.reset()
+    ob = env.reset(config.N_RUs, config.N_DUs)
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)

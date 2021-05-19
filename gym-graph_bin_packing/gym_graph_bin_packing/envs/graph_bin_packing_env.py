@@ -70,18 +70,22 @@ class GraphVbppEnv(gym.Env):
     def get_reward(self):
         # get the reward from current adjacency matrix
         r = sum(sum(self.adjacency_mat)) - sum(sum(self.adjacency_mat_pre))
+        # normalized by N_RUs
+        r = r / self.n_items
         # all items places, ep finished - bonus reward for occupied bins
         if sum(sum(self.adjacency_mat)) == self.n_items:
             occupied_bins = sum(self.adjacency_mat) > 0
             # the lower bound for occupied bins, if all items places
             lb_bins = np.ceil(self.n_items / self.bin_load_capacity)
             # r += self.n_items * (self.n_bins - sum(occupied_bins))
-            r += lb_bins / (sum(occupied_bins)) * 20
+            r += lb_bins / (sum(occupied_bins)) * 2
             # r += (self.n_bins - sum(occupied_bins))
         return r
 
 
-    def reset(self):
+    def reset(self, n_items=20, n_bins=4):
+        self.n_items = n_items
+        self.n_bins = n_bins
         # Reset the state of the environment to an initial state
         self.bins = [self.bin_capacity] * self.n_bins # init bins
         # reset items
@@ -92,6 +96,10 @@ class GraphVbppEnv(gym.Env):
         self.cur_item = 0
         # reset adjacency matrix
         self.adjacency_mat = np.zeros([self.n_items, self.n_bins])
+        # observation and action space
+        self.action_space = spaces.Discrete(self.n_bins)
+        self.observation_space = spaces.Box(low=0, high=1, shape=
+                        (self.n_bins, self.n_items), dtype=np.float64)
         return self.adjacency_mat # return s_0
 
 
