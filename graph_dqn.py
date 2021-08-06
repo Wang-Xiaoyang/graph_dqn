@@ -30,16 +30,16 @@ wandb.init(entity="xiaoyang",
             project="graph-q-learning-compare")
 
 #env config
-wandb.config.N_RUs = 20
+wandb.config.N_RUs = 10
 wandb.config.N_DUs = 3
 wandb.config.model = 'GCN'
 
-wandb.config.N_EPS = 200
-wandb.config.BUFFER_LEN = 10000
+wandb.config.N_EPS = 500
+wandb.config.BUFFER_LEN = 2000
 wandb.config.batch_size = 128
 wandb.config.GAMMA = 0.98
 wandb.config.LEARNING_RATE = 0.005
-wandb.config.UPDATE_STEP = 20
+wandb.config.UPDATE_STEP = 10
 wandb.config.epsilon_max = 1.0
 wandb.config.epsilon_min = 0.0005
 wandb.config.validation_eps = 20
@@ -216,6 +216,7 @@ for ii in range(N_EPS):
     # log results after each game episode
     wandb.log({"ep score": ep_reward, "env step": step})
 
+print("++++++++ Model Evaluation +++++++++++++++")
 for ii in range(validation_eps):
     ep_score = model_validate()
     wandb.log({"evaluation ep score": ep_score})
