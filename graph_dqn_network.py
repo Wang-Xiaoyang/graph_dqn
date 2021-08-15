@@ -143,7 +143,7 @@ memory = Memory(max_size=BUFFER_LEN)
 
 # initialize two graph neural nets: Q_net, Q_net_
 Q_net = GQN(8, 16).double().to(device=device)
-Q_net_ = GQN(8, 8).double().to(device=device)
+Q_net_ = GQN(8, 16).double().to(device=device)
 # copy parameters
 Q_net_.load_state_dict(Q_net.state_dict())
 # define optimizer
