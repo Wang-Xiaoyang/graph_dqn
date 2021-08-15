@@ -75,14 +75,14 @@ class GraphVbppNetEnv(gym.Env):
 
     def get_reward(self, dist):
         # get the reward from current adjacency matrix
-        r = sum(sum(self.adjacency_mat)) - sum(sum(self.adjacency_mat_pre))
+        r = sum(sum(self.adjacency_mat)) - sum(sum(self.adjacency_mat_pre)) * 2
         # bandwidth cost
         if self.cur_item < self.n_tier_1:
             r_b = 0.01 * 10
         else:
             r_b = 0.01 * 100
         # latency cost
-        r_l = dist / self.c_light * 1.7 # latency in Millisecond (ms)
+        r_l = dist / self.c_light * 1.7 * 2 # latency in Millisecond (ms)
         # power consumption cost
         r_p = self.power_consumption(self.bin_capacity_n) - self.power_consumption(self.bin_capacity_pre)
         # deployment cost
