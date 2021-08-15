@@ -52,7 +52,7 @@ class GraphVbppNetEnv(gym.Env):
         self.adjacency_mat[self.cur_item, a] = 1
         # get bin capacity after this action
         self.bin_capacity_n = self.adjacent_mat_capacity()
-        
+
         # check if there's negative capacity
         sum_neg = 0
         for i in [1,2]:
@@ -64,6 +64,7 @@ class GraphVbppNetEnv(gym.Env):
         else:
             dist = self.calculate_distance(self.northing, self.easting, a)
             r = self.get_reward(dist)
+            r = r[0]
             self.cur_item += 1
 
         if self.cur_item >= sum(self.n_nodes[:2]):

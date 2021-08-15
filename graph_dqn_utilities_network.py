@@ -57,9 +57,9 @@ def copy_graph(g, fea_name):
     gc.collect()
     return g_copy
 
-def self_loop_graph(g):
-    g = dgl.remove_self_loop(g)
-    g = dgl.add_self_loop(g)
+def self_loop_graph(g, a):
+    list_nodes = list(range(g.num_nodes()))
+    g = dgl.add_edges(g, list_nodes[:-a], list_nodes[:-a])
     return g
 
 # replay buffer using deque

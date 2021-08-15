@@ -72,7 +72,7 @@ config = wandb.config
 def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
     # g is the graph
-    g = self_loop_graph(g)
+    g = self_loop_graph(g, n_nodes[2])
     if np.random.uniform(0,1) >= epsilon:
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -102,7 +102,7 @@ def model_validate():
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
     g = dgl.graph((u, v), num_nodes=sum(n_nodes))
-    g = self_loop_graph(g)
+    g = self_loop_graph(g, n_nodes[2])
     # node features
     bin_capacity_list = state_to_bin_capacity(env)
     nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -117,7 +117,7 @@ def model_validate():
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
         g = dgl.graph((u, v), num_nodes=sum(n_nodes))
-        g = self_loop_graph(g)
+        g = self_loop_graph(g, n_nodes[2])
         # node features
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -173,7 +173,7 @@ for ii in range(N_EPS):
     ob = env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
     u, v = adjacency_vbpp_to_graph(ob)
     g = dgl.graph((u, v), num_nodes=sum(n_nodes))
-    g = self_loop_graph(g)
+    g = self_loop_graph(g, n_nodes[2])
     # node features
     bin_capacity_list = state_to_bin_capacity(env)
     nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -194,7 +194,7 @@ for ii in range(N_EPS):
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob)
         g = dgl.graph((u, v), num_nodes=sum(n_nodes))
-        g = self_loop_graph(g)
+        g = self_loop_graph(g, n_nodes[2])
         # node features
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
