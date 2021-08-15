@@ -9,12 +9,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch import GraphConv
 import networkx as nx
+import pandas as pd
 
 import gc
 
-from graph_dqn_utilities import *
+from graph_dqn_utilities_network import *
 
 import wandb
+import time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -33,17 +35,32 @@ wandb.init(entity="xiaoyang",
 Import dataset to decide env configurations.
 Dataset 1: bristol_nodes_1.csv 
 """
+df = pd.read_csv('bristol_nodes_1.csv')
+# get n_nodes
+nodes_types = ['T', 'M', 'O']
+n_nodes = []
+for item in nodes_types:
+    list_nodes = get_node_id_types(item, df)
+    n_nodes.append(len(list_nodes))
+# bandwidth from this type of nodes to others
+bandwidth = [10, 100, 0]
 
-
+# get items_list
+k = 2e-3
+items_list = np.array(df['Aggregate Residential Customers']) * k
+# get coordinates
+northing_list = list(df['northing'])
+easting_list = list(df['easting'])
 
 #env config
-wandb.config.N_RUs = 10
-wandb.config.N_DUs = 3
+wandb.config.n_nodes = n_nodes
+# nodes capacity 
+wandb.config.C = [100, 500, 1000]
 wandb.config.model = 'GCN'
 
 wandb.config.N_EPS = 500
 wandb.config.BUFFER_LEN = 2000
-wandb.config.batch_size = 128
+wandb.config.batch_size = 64
 wandb.config.GAMMA = 0.98
 wandb.config.LEARNING_RATE = 0.005
 wandb.config.UPDATE_STEP = 10
@@ -56,14 +73,15 @@ def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
     # g is the graph
     if np.random.uniform(0,1) >= epsilon:
-        nodes_RU, nodes_Du = state_to_node_fea(env)
+        bin_capacity_list = state_to_bin_capacity(env)
+        nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
         with torch.no_grad():
-            features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+            features = torch.tensor(nodes_fea, dtype=torch.double)
             g.ndata['x'] = features
             Q_values = []
             with g.local_scope():
-                for i in range(env.n_bins):
-                    g.add_edges([env.cur_item], i+env.n_items)
+                for i in range(env.action_space.n):
+                    g.add_edges([env.cur_item], i+env.n_nodes[0])
                     g = g.to(device)
                     # make sure inputs and g are on the same device
                     inputs = g.ndata['x']
@@ -78,13 +96,15 @@ def choose_action(env, epsilon, g):
 
 def model_validate():
     ep_reward = 0
-    ob = env.reset(config.N_RUs, config.N_DUs)
+    ob = env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
 
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
-    nodes_RU, nodes_DU = state_to_node_fea(env)
-    g = dgl.graph((u, v), num_nodes=n_nodes)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+    g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+    # node features
+    bin_capacity_list = state_to_bin_capacity(env)
+    nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
+    g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
 
     done = False
     while not done:
@@ -94,9 +114,11 @@ def model_validate():
         ep_reward += r
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
-        nodes_RU, nodes_DU = state_to_node_fea(env)
-        g = dgl.graph((u, v), num_nodes=n_nodes)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+        g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+        # node features
+        bin_capacity_list = state_to_bin_capacity(env)
+        nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
+        g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
         state_ = g
     return ep_reward
 
@@ -117,8 +139,8 @@ validation_eps = config.validation_eps
 memory = Memory(max_size=BUFFER_LEN)
 
 # initialize two graph neural nets: Q_net, Q_net_
-Q_net = GQN(3, 8).double().to(device=device)
-Q_net_ = GQN(3, 8).double().to(device=device)
+Q_net = GQN(8, 8).double().to(device=device)
+Q_net_ = GQN(8, 8).double().to(device=device)
 # copy parameters
 Q_net_.load_state_dict(Q_net.state_dict())
 # define optimizer
@@ -127,13 +149,16 @@ optimizer = torch.optim.Adam(Q_net.parameters(), lr=LEARNING_RATE)
 loss_MSE = nn.MSELoss().to(device)
 
 # make env
-env = gym.make("gym_graph_bin_packing:graph_vbpp-v0")
-env.reset(config.N_RUs, config.N_DUs)
-n_RUs, n_DUs = env.n_items, env.n_bins
-n_nodes = n_RUs + n_DUs
+env = gym.make("gym_graph_bin_packing_network:graph_vbpp_network-v0")
+env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
 n_actions = env.action_space.n
 
 epsilon = epsilon_max
+
+# node features for graph
+nodes_fea_no_capacity = data_to_node_features_no_capacity(df, n_nodes, bandwidth)
+# bin_capacity_list = state_to_bin_capacity(env)
+# nodes_fea = node_fea_with_capacity(nodes_fea, bin_capacity_list)
 
 wandb.watch(Q_net)
 
@@ -142,16 +167,18 @@ ep_rewards = []
 for ii in range(N_EPS):
     ep_reward = 0
     # reset and get the init state
-    ob = env.reset(config.N_RUs, config.N_DUs)
+    ob = env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
     u, v = adjacency_vbpp_to_graph(ob)
-    nodes_RU, nodes_DU = state_to_node_fea(env)
-    g = dgl.graph((u, v), num_nodes=n_nodes)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+    g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+    # node features
+    bin_capacity_list = state_to_bin_capacity(env)
+    nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
+    g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
 
     done = False
     while not done:        
         a = choose_action(env, epsilon, g)
-        a_graph = [env.cur_item, a+env.n_items] # action in graph format: u-->v, forms an edge
+        a_graph = [env.cur_item, a+env.n_nodes[0]] # action in graph format: u-->v, forms an edge
         g.add_edges([a_graph[0]], a_graph[1])
 
         state_action = g
@@ -161,17 +188,19 @@ for ii in range(N_EPS):
         ob_, r, done, _ = env.step(a)
         ep_reward += r
         # new ob to new state
-        u, v = adjacency_vbpp_to_graph(ob_)
-        nodes_RU, nodes_DU = state_to_node_fea(env)
-        g = dgl.graph((u, v), num_nodes=n_nodes)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+        u, v = adjacency_vbpp_to_graph(ob)
+        g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+        # node features
+        bin_capacity_list = state_to_bin_capacity(env)
+        nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
+        g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
         state_ = g        
         # next state / action pairs (for all possible actions)
         state_action_ = []
         for t in range(env.action_space.n):
             with g.local_scope():
                 g_tmp = copy_graph(g, 'x')
-                g_tmp.add_edges([env.cur_item], t+n_RUs)
+                g_tmp.add_edges([env.cur_item], t+n_nodes[0])
                 state_action_.append(g_tmp)
             del g_tmp
             gc.collect()
@@ -201,7 +230,7 @@ for ii in range(N_EPS):
             next_q_values_all = Q_net_(states_actions_, states_actions_.ndata['x']).detach()
             next_q_values = torch.max(next_q_values_all.reshape(batch_size, n_actions), axis=1).values
             next_q_values = next_q_values.to(device)
-            q_targets = rewards + GAMMA * torch.mul(next_q_values, non_final_mask).to(device) 
+            q_targets = rewards.squeeze() + GAMMA * torch.mul(next_q_values, non_final_mask).to(device) 
             q_targets = torch.unsqueeze(q_targets, 1).to(device)
 
             # q_values for current Q(s,a)
@@ -228,5 +257,8 @@ for ii in range(validation_eps):
     ep_score = model_validate()
     wandb.log({"evaluation ep score": ep_score})
 
+
+timestr = time.strftime("%Y%m%d_%H%M%S")
+name = './' + timestr + '_Q_net.pt'
 # save Q_net
-torch.save(Q_net.state_dict(), './Q_net.pt')
+torch.save(Q_net.state_dict(), name)
