@@ -72,6 +72,7 @@ config = wandb.config
 def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
     # g is the graph
+    g = self_loop_graph(g)
     if np.random.uniform(0,1) >= epsilon:
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -101,6 +102,7 @@ def model_validate():
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
     g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+    g = self_loop_graph(g)
     # node features
     bin_capacity_list = state_to_bin_capacity(env)
     nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -115,6 +117,7 @@ def model_validate():
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
         g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+        g = self_loop_graph(g)
         # node features
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -139,7 +142,7 @@ validation_eps = config.validation_eps
 memory = Memory(max_size=BUFFER_LEN)
 
 # initialize two graph neural nets: Q_net, Q_net_
-Q_net = GQN(8, 8).double().to(device=device)
+Q_net = GQN(8, 16).double().to(device=device)
 Q_net_ = GQN(8, 8).double().to(device=device)
 # copy parameters
 Q_net_.load_state_dict(Q_net.state_dict())
@@ -170,6 +173,7 @@ for ii in range(N_EPS):
     ob = env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
     u, v = adjacency_vbpp_to_graph(ob)
     g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+    g = self_loop_graph(g)
     # node features
     bin_capacity_list = state_to_bin_capacity(env)
     nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
@@ -190,6 +194,7 @@ for ii in range(N_EPS):
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob)
         g = dgl.graph((u, v), num_nodes=sum(n_nodes))
+        g = self_loop_graph(g)
         # node features
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)

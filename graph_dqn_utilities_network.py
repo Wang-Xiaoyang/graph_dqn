@@ -1,3 +1,4 @@
+from networkx.classes.function import nodes
 import numpy as np
 import gym
 import torch
@@ -55,6 +56,11 @@ def copy_graph(g, fea_name):
     del g
     gc.collect()
     return g_copy
+
+def self_loop_graph(g):
+    g = dgl.remove_self_loop(g)
+    g = dgl.add_self_loop(g)
+    return g
 
 # replay buffer using deque
 class Memory():
@@ -140,3 +146,20 @@ def node_fea_with_capacity(node_fea, bin_capacity):
     for i in range(len(node_fea)):
         node_fea_.append(np.concatenate((node_fea[i], bin_capacity[i])))
     return node_fea_
+
+def node_fea_normalization(node_fea, bandwidth, C):
+    """
+    Normalize node features as x_input to graphs, for doing GNN.
+    This normalization is specified to this problem - simple scaling normalization.
+    """
+    nodes_fea = np.array(node_fea.copy())
+    # items * 1e-2
+    nodes_fea[:, 3] = nodes_fea[:, 3] * 1e-2 
+    # northing & easting * 1e-6
+    nodes_fea[:, 4] = nodes_fea[:, 4] * 1e-6
+    nodes_fea[:, 5] = nodes_fea[:, 5] * 1e-6
+    # bandwith / max(bandwidth)
+    nodes_fea[:, 6] = nodes_fea[:, 6] / max(bandwidth)
+    # capacity / max(C)
+    nodes_fea[:, 7] = nodes_fea[:, 7] / max(C)
+    return nodes_fea
