@@ -14,7 +14,7 @@ class GraphVbppNetEnv(gym.Env):
     def __init__(self):
         super(GraphVbppNetEnv, self).__init__()
         # define env constants
-        self.c_light = 299792458e-6 # so the latency is in \mu s
+        self.c_light = 299792458e-3 # so the latency is in \mu s
         self.n_node_types = 3
         self.n_nodes = [20, 1, 1]
         self.n_tier_1, self.n_tier_2, self.n_tier_3 = self.n_nodes[0], self.n_nodes[1], self.n_nodes[2]
@@ -52,16 +52,19 @@ class GraphVbppNetEnv(gym.Env):
         self.adjacency_mat[self.cur_item, a] = 1
         # get bin capacity after this action
         self.bin_capacity_n = self.adjacent_mat_capacity()
+        
         # check if there's negative capacity
+        sum_neg = 0
         for i in [1,2]:
-            if sum(np.array(self.bin_capacity_n[i]) < 0) > 0:
-                # reverse action
-                self.adjacency_mat[self.cur_item, a] = 0
-                done = True
-            else:
-                dist = self.calculate_distance(self.northing, self.easting, a)
-                r = self.get_reward(dist)
-                self.cur_item += 1
+            sum_neg += sum(np.array(self.bin_capacity_n[i]) < 0)
+        if sum_neg > 0:
+            # reverse action
+            self.adjacency_mat[self.cur_item, a] = 0
+            done = True
+        else:
+            dist = self.calculate_distance(self.northing, self.easting, a)
+            r = self.get_reward(dist)
+            self.cur_item += 1
 
         if self.cur_item >= sum(self.n_nodes[:2]):
             self.cur_item = 0
@@ -78,7 +81,7 @@ class GraphVbppNetEnv(gym.Env):
         else:
             r_b = 0.01 * 100
         # latency cost
-        r_l = dist / self.c_light * 1.7 * 1e-3 # latency in Millisecond (ms)
+        r_l = dist / self.c_light * 1.7 # latency in Millisecond (ms)
         # power consumption cost
         r_p = self.power_consumption(self.bin_capacity_n) - self.power_consumption(self.bin_capacity_pre)
         # deployment cost

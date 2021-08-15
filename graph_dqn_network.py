@@ -77,7 +77,7 @@ def choose_action(env, epsilon, g):
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
         with torch.no_grad():
-            features = torch.tensor(nodes_fea, dtype=torch.double)
+            features = torch.tensor(node_fea_normalization(nodes_fea, bandwidth, config.C), dtype=torch.double)
             g.ndata['x'] = features
             Q_values = []
             with g.local_scope():
@@ -106,7 +106,7 @@ def model_validate():
     # node features
     bin_capacity_list = state_to_bin_capacity(env)
     nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
-    g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
+    g.ndata['x'] = torch.tensor(node_fea_normalization(nodes_fea, bandwidth, config.C), dtype=torch.double)
 
     done = False
     while not done:
@@ -121,7 +121,7 @@ def model_validate():
         # node features
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
-        g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
+        g.ndata['x'] = torch.tensor(node_fea_normalization(nodes_fea, bandwidth, config.C), dtype=torch.double)
         state_ = g
     return ep_reward
 
@@ -177,7 +177,7 @@ for ii in range(N_EPS):
     # node features
     bin_capacity_list = state_to_bin_capacity(env)
     nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
-    g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
+    g.ndata['x'] = torch.tensor(node_fea_normalization(nodes_fea, bandwidth, config.C), dtype=torch.double)
 
     done = False
     while not done:        
@@ -198,7 +198,7 @@ for ii in range(N_EPS):
         # node features
         bin_capacity_list = state_to_bin_capacity(env)
         nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
-        g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
+        g.ndata['x'] = torch.tensor(node_fea_normalization(nodes_fea, bandwidth, config.C), dtype=torch.double)
         state_ = g        
         # next state / action pairs (for all possible actions)
         state_action_ = []
