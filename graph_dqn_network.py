@@ -136,8 +136,6 @@ epsilon_max = config.epsilon_max
 epsilon_min = config.epsilon_min
 epsilon_step = (epsilon_max - epsilon_min) / N_EPS # how to decay epsilon
 
-validation_eps = config.validation_eps
-
 # initialize memory buffer
 memory = Memory(max_size=BUFFER_LEN)
 
@@ -258,7 +256,7 @@ for ii in range(N_EPS):
     wandb.log({"ep score": ep_reward, "env step": step})
 
 print("++++++++ Model Evaluation +++++++++++++++")
-for ii in range(validation_eps):
+for ii in range(config.validation_eps):
     ep_score = model_validate()
     wandb.log({"evaluation ep score": ep_score})
 
