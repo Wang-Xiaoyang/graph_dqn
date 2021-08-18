@@ -110,6 +110,7 @@ def get_node_id_types(name, nodes_file):
 def data_to_node_features_no_capacity(data_pd, n_nodes, bandwidth_list):
     """
     Get node features from data pandas file (for graph); without bin_capacity
+    node feature: [node type(one-hot), UE requirement, northing, easting, bandwith (when connects to other nodes)]
     """
     # one-hot representation for node types
     data = np.asarray([['T'], ['M'], ['O']])
@@ -141,6 +142,9 @@ def data_to_node_features_no_capacity(data_pd, n_nodes, bandwidth_list):
     return node_fea
 
 def node_fea_with_capacity(node_fea, bin_capacity):
+    """
+    node feature: [node type(one-hot), UE requirement, northing, easting, bandwith (when connects to other nodes), remaining capacity]
+    """
     node_fea_ = []
     assert len(node_fea) == len(bin_capacity)
     for i in range(len(node_fea)):

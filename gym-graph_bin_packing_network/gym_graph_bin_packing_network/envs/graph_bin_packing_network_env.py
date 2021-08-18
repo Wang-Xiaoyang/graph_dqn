@@ -142,12 +142,12 @@ class GraphVbppNetEnv(gym.Env):
         for i in range(self.n_tier_2):
             used = self.bin_capacity[1][i] - bin_capacity[1][i]
             percentage = used / self.C_2
-            power = power + (percentage**2 + 2 * percentage) * 0.5
+            power = power + (2 * percentage - percentage**2) * self.power_par[1]
         # for O nodes
         for i in range(self.n_tier_3):
             used = self.bin_capacity[2][i] - bin_capacity[2][i]
             percentage = used / self.C_3
-            power = power + (percentage**2 + 2 * percentage) * 1.0
+            power = power + (2 * percentage - percentage**2) * self.power_par[2]
         return power
 
     def compute_deployment(self, adjacency_mat):
@@ -159,11 +159,12 @@ class GraphVbppNetEnv(gym.Env):
         return deployment_cost
 
 
-    def reset(self, n_nodes, C, items_list, northing_list, easting_list):
+    def reset(self, n_nodes, C, power_par, items_list, northing_list, easting_list):
         self.n_nodes = n_nodes
         self.n_tier_1, self.n_tier_2, self.n_tier_3 = self.n_nodes[0], self.n_nodes[1], self.n_nodes[2]
 
         self.C = C
+        self.power_par = power_par
         self.bin_capacity = [[self.C[i] * np.ones(self.vector_dim)] * self.n_nodes[i] for i in range(self.n_node_types)]
         self.C_1, self.C_2, self.C_3 = self.C[0], self.C[1], self.C[2]
         # reset bin capacity

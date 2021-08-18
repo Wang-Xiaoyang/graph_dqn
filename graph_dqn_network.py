@@ -56,6 +56,7 @@ easting_list = list(df['easting'])
 wandb.config.n_nodes = n_nodes
 # nodes capacity 
 wandb.config.C = [100, 500, 1000]
+wandb.config.power_par = [0.1, 0.5, 1.0] # scale for power consumption
 wandb.config.model = 'GCN'
 
 wandb.config.N_EPS = 500
@@ -97,7 +98,7 @@ def choose_action(env, epsilon, g):
 
 def model_validate():
     ep_reward = 0
-    ob = env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
+    ob = env.reset(config.n_nodes, config.C, config.power_par, items_list, northing_list, easting_list)
 
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
@@ -151,7 +152,7 @@ loss_MSE = nn.MSELoss().to(device)
 
 # make env
 env = gym.make("gym_graph_bin_packing_network:graph_vbpp_network-v0")
-env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
+env.reset(config.n_nodes, config.C, config.power_par, items_list, northing_list, easting_list)
 n_actions = env.action_space.n
 
 epsilon = epsilon_max
@@ -168,7 +169,7 @@ ep_rewards = []
 for ii in range(N_EPS):
     ep_reward = 0
     # reset and get the init state
-    ob = env.reset(config.n_nodes, config.C, items_list, northing_list, easting_list)
+    ob = env.reset(config.n_nodes, config.C, config.power_par, items_list, northing_list, easting_list)
     u, v = adjacency_vbpp_to_graph(ob)
     g = dgl.graph((u, v), num_nodes=sum(n_nodes))
     g = self_loop_graph(g, n_nodes[2])
