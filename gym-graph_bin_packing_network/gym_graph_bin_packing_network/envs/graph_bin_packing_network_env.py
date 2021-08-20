@@ -86,6 +86,9 @@ class GraphVbppNetEnv(gym.Env):
         r_l = dist / self.c_light * 1.7 * 2 # latency in Millisecond (ms)
         # power consumption cost
         r_p = self.power_consumption(self.bin_capacity_n) - self.power_consumption(self.bin_capacity_pre)
+        # r_p *= 5 # scaling factor
+        # r_p *= 10 # performance decay
+        r_p *= 3
         # deployment cost
         r_d = self.compute_deployment(self.adjacency_mat) - self.compute_deployment(self.adjacency_mat_pre)
 

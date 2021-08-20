@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from dgl.nn.pytorch import GraphConv
 import networkx as nx
 import pandas as pd
+import math
 
 import gc
 # Evaluate the trained model
@@ -36,7 +37,9 @@ wandb.init(entity="xiaoyang",
 Import dataset to decide env configurations.
 Dataset 1: bristol_nodes_1.csv 
 """
-df = pd.read_csv('bristol_nodes_1.csv')
+folder = './data_1/'
+file_name = 'bristol_nodes_1.csv'
+df = pd.read_csv(folder + file_name)
 df.drop(['Unnamed: 0'], axis=1) #remove unused information
 
 # get n_nodes
@@ -183,10 +186,46 @@ def resource_utilisation(config, nodes_fea):
     remaining_ratio = [i / j for i, j in zip(remaining_capcity, capacity_list)]
     used_ratio = np.array([1 - i for i in remaining_ratio])
     # power consumption: u^2 + 2*u
-    power = [(- i**2 + i * 2) * j for i, j in zip(used_ratio, power_scale)]
-    return used_ratio, np.array(power) * config.power_scaling
+    # power = [(- i**2 + i * 2) * j for i, j in zip(used_ratio, power_scale)]
+    power_sites_percentage = [- i**2 + i * 2 for i in used_ratio]
+    # return used_ratio, np.array(power) * config.power_scaling
+    return np.array(used_ratio) * 100, np.array(power_sites_percentage) * 100
 
 nodes_output = df.copy()
-nodes_output.drop([' cpu_capacity', ' memory_capacity', ' storage_capacity'], axis=1)
+nodes_output = nodes_output.drop(['Unnamed: 0',' cpu_capacity', ' memory_capacity', ' storage_capacity'], axis=1)
 
 used_ratio, power_consumption = resource_utilisation(config, nodes_fea)
+nodes_output['Resource utilisation (%)'] = used_ratio
+nodes_output['Power consumption (%)'] = power_consumption
+# save file
+nodes_output.to_csv(folder + 'results_nodes.csv')
+
+# links.csv - from ob_ (adjacency matrix, n_rows = n_tier_1_nodes + n_tier_2_nodes
+#                                           n_columns = n_tier_2_nodes + n_tier_3_nodes)
+
+def calculate_latency(easting, northing, a):
+    c_light = 299792458e-3
+    # a is a tuple: (node1, node2)
+    x_1, y_1 = easting[a[0]], northing[a[0]]
+    x_2, y_2 = easting[a[1]], northing[a[1]]
+    dist = math.hypot(x_2 - x_1, y_2 - y_1)
+    # latency
+    l = dist / c_light * 1.7# latency in Millisecond (ms)
+    return l 
+
+links = []
+latency_list = []
+easting = df['easting']
+northing = df['northing']
+for i in range(len(ob_)):
+    a = list(ob_[i]).index(1)
+    link = (df['# id'][i], df['# id'][a + config.n_nodes[0]])
+    links.append(link)
+    latency = calculate_latency(easting, northing, (i, a+config.n_nodes[0]))
+    latency_list.append(latency)
+
+# save file
+df_links = pd.DataFrame()
+df_links['links'] = links
+df_links['latency(ms)'] = latency_list
+df_links.to_csv(folder + 'results_links.csv')
