@@ -1,3 +1,12 @@
+"""
+# Evaluate the trained model
+# Return 'nodes.csv' and 'links.csv'
+# nodes.csv, columns are [id, node_type (0, 1 or 2), lat/long, northing/easting, user distribution, resource utlisation(%), power consumption]
+# links.csv, columns are [[id1, id2], latency]
+# total power consumption and total latency can be calculated
+# trained model --> model validation --> action sequences --> build two output files
+"""
+
 import numpy as np
 import gym
 import torch
@@ -13,12 +22,6 @@ import pandas as pd
 import math
 
 import gc
-# Evaluate the trained model
-# Return 'nodes.csv' and 'links.csv'
-# nodes.csv, columns are [id, lat/long, northing/easting, user distribution, resource utlisation(%), power consumption]
-# links.csv, columns are [[id1, id2], latency]
-# total power consumption and total latency can be calculated
-# trained model --> model validation --> action sequences --> build two output files
 
 from graph_dqn_utilities_network import *
 
@@ -26,8 +29,6 @@ import wandb
 import time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-#device = "cpu"
 
 # wandb log
 wandb.init(entity="xiaoyang",
@@ -41,6 +42,7 @@ folder = './data_1/'
 file_name = 'bristol_nodes_1.csv'
 df = pd.read_csv(folder + file_name)
 df.drop(['Unnamed: 0'], axis=1) #remove unused information
+nodes_output = df.copy()
 
 # get n_nodes
 nodes_types = ['T', 'M', 'O']
@@ -48,7 +50,17 @@ n_nodes = []
 for item in nodes_types:
     list_nodes = get_node_id_types(item, df)
     n_nodes.append(len(list_nodes))
-# bandwidth from this type of nodes to others
+
+# get node type indicator: [0, 1, 2] for ['T', 'M', 'O']
+node_type_numeric = list(range(len(nodes_types)))
+nodes_types_numeric = np.zeros(len(df))
+for i in range(len(df)):
+    cur_type = df['# id'][i][0]
+    nodes_types_numeric[i] = node_type_numeric[nodes_types.index(cur_type)]
+
+nodes_output['node type'] = nodes_types_numeric
+
+# bandwidth from this type of nodes to others - a pre-defined constant
 bandwidth = [10, 100, 0]
 
 # get items_list
@@ -142,8 +154,9 @@ def model_validate():
         state_ = g
     return ep_reward, ob_, nodes_fea
 
+
 """
-Initialize network and do the validation.
+Initialize network; perform model validation.
 """
 
 # initialize Q network
@@ -169,8 +182,9 @@ for ii in range(config.validation_eps):
 
 """
 Get output files.
+nodes.csv, columns are [id, node_type (0, 1 or 2), lat/long, northing/easting, user distribution, resource utlisation(%), power consumption]
 """
-# nodes.csv, columns are [id, lat/long, northing/easting, user distribution, resource utlisation(%), power consumption]
+# calculate resource and power utilisation
 
 def resource_utilisation(config, nodes_fea):
     # resource utilisation in %
@@ -191,7 +205,6 @@ def resource_utilisation(config, nodes_fea):
     # return used_ratio, np.array(power) * config.power_scaling
     return np.array(used_ratio) * 100, np.array(power_sites_percentage) * 100
 
-nodes_output = df.copy()
 nodes_output = nodes_output.drop(['Unnamed: 0',' cpu_capacity', ' memory_capacity', ' storage_capacity'], axis=1)
 
 used_ratio, power_consumption = resource_utilisation(config, nodes_fea)
@@ -229,3 +242,41 @@ df_links = pd.DataFrame()
 df_links['links'] = links
 df_links['latency(ms)'] = latency_list
 df_links.to_csv(folder + 'results_links.csv')
+
+# save nodes in a graph format
+# source node, source node type, target node, target node type, edge weight(latency),
+# destinatio node power consumption, destination node resource utilisation
+link_s, link_d = [], []
+link_s_type, link_d_type = [], []
+
+for i in range(len(ob_)):
+    a = list(ob_[i]).index(1)
+    link_source = nodes_output['# id'][i]
+    link_source_type = nodes_output['node type'][list(nodes_output['# id']).index(link_source)]
+    link_destination = nodes_output['# id'][a + config.n_nodes[0]]
+    link_destination_type = nodes_output['node type'][list(nodes_output['# id']).index(link_destination)]
+    link_s.append(link_source)
+    link_s_type.append(link_source_type)
+    link_d.append(link_destination)
+    link_d_type.append(link_destination_type)
+
+# get power consumption and resource utilisation for destination nodes
+pow_con_list, resource_util_list = [], []
+for i in link_d:
+    idx = list(nodes_output['# id']).index(i)
+    pow_con = nodes_output['Power consumption (%)'][idx]
+    resource_util = nodes_output['Resource utilisation (%)'][idx]
+    pow_con_list.append(pow_con)
+    resource_util_list.append(resource_util)
+
+# write file
+df_links_2 = pd.DataFrame()
+df_links_2['source nodes'] = link_s
+df_links_2['destination nodes'] = link_d
+df_links_2['source nodes type'] = link_s_type
+df_links_2['destination nodes type'] = link_d_type
+df_links_2['latency(ms)'] = latency_list
+df_links_2['destination node power consumption'] = pow_con_list
+df_links_2['destination node resource utilisation'] = resource_util_list
+
+df_links_2.to_csv(folder + 'results_links_2.csv')

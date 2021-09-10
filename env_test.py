@@ -1,6 +1,8 @@
 import gym
 import numpy as np
 import pandas as pd
+import pdb
+
 from graph_dqn_utilities_network import *
 
 env = gym.make("gym_graph_bin_packing_network:graph_vbpp_network-v0")
@@ -23,6 +25,8 @@ items_list = np.array(df['Aggregate Residential Customers']) * k
 northing_list = list(df['northing'])
 easting_list = list(df['easting'])
 
+pdb.set_trace()
+
 # node features for graph
 nodes_fea_no_capacity = data_to_node_features_no_capacity(df, n_nodes, bandwidth)
 
@@ -37,6 +41,7 @@ g = self_loop_graph(g)
 bin_capacity_list = state_to_bin_capacity(env)
 nodes_fea = node_fea_with_capacity(nodes_fea_no_capacity, bin_capacity_list)
 g.ndata['x'] = torch.tensor(node_fea_normalization(nodes_fea, bandwidth, C), dtype=torch.double)
+
 
 done = False
 while not done:
