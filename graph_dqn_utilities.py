@@ -73,12 +73,12 @@ class Memory():
 def state_to_node_fea(env):
 
     # node feature for RU: [0(indicates this is an RU), item_value, 1 or 0(connection status)]
-    nodes_RU_value = np.transpose(env.items.copy())
+    nodes_RU_value = np.transpose(env.fea.copy())
 
     nodes_RU_adjacency = np.sum(env.adjacency_mat, axis=1)
     nodes_RU_adjacency = np.expand_dims(nodes_RU_adjacency, axis=1)
 
-    nodes_RU_flag = np.zeros([env.n_items, 1])
+    nodes_RU_flag = np.zeros([env.n_nodes[0], 1])
     # nodes_RU_current = np.zeros([env.n_items, 1])
     # nodes_RU_current[env.cur_item] = 1
 

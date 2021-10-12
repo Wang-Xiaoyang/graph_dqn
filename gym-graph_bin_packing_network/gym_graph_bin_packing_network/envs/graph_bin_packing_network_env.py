@@ -35,10 +35,30 @@ class GraphVbppNetEnv(gym.Env):
 
         # Define action and observation space
         # action space: connect with metro or core nodes (DUs)
-        self.action_space = spaces.Discrete(sum(self.n_nodes[1:]))
+        self.n_actions = sum(self.n_nodes[1:])
+        self.action_space = spaces.Discrete(self.n_actions)
         # self.observation_space = spaces.Box(low=0, high=1, shape=
         #                 (self.n_bins, self.n_items), dtype=np.float64)
 
+    def available_actions(self):
+        # find available actions for current item
+        # this is an auxiliary function
+        available_actions = []
+        self.bin_capacity_tmp = copy.deepcopy(self.bin_capacity_n)
+        for i in range(self.n_actions):
+            self.adjacency_mat[self.cur_item, i] = 1
+            self.bin_capacity_tmp = self.adjacent_mat_capacity()
+            sum_neg = 0
+            for j in [1,2]:
+                sum_neg += sum(np.array(self.bin_capacity_tmp[j]) < 0)
+            if sum_neg == 0:
+                available_actions += [i]
+            # reverse action
+            self.adjacency_mat[self.cur_item, i] = 0
+            # reverse capacity list
+            self.bin_capacity_tmp = self.adjacent_mat_capacity()
+        return available_actions
+    
     def step(self, a):
         # Execute one time step within the environment
         # action: put i_th item to j_th bin; action = j, i is an env variable
@@ -60,7 +80,10 @@ class GraphVbppNetEnv(gym.Env):
         if sum_neg > 0:
             # reverse action
             self.adjacency_mat[self.cur_item, a] = 0
+            # reverse capacity list
+            self.bin_capacity_n = self.adjacent_mat_capacity()
             done = True
+            return self.adjacency_mat, r, done, {}
         else:
             dist = self.calculate_distance(self.northing, self.easting, a)
             r = self.get_reward(dist)
@@ -70,6 +93,7 @@ class GraphVbppNetEnv(gym.Env):
         if self.cur_item >= sum(self.n_nodes[:2]):
             self.cur_item = 0
             done = True
+            return self.adjacency_mat, r, done, {}
         
         return self.adjacency_mat, r, done, {}
 

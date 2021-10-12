@@ -26,15 +26,18 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # wandb log
 # wandb.init(entity="xiaoyang",
 #             project="graph-q-learning")
+# wandb.init(entity="xiaoyang",
+#             project="graph-q-learning-compare")
+
 wandb.init(entity="xiaoyang",
-            project="graph-q-learning-compare")
+                project="graph-q-learning-dynamic")
 
 #env config
-wandb.config.N_RUs = 10
-wandb.config.N_DUs = 3
+wandb.config.N_RUs = 20
+wandb.config.N_DUs = 4
 wandb.config.model = 'GCN'
 
-wandb.config.N_EPS = 500
+wandb.config.N_EPS = 5
 wandb.config.BUFFER_LEN = 2000
 wandb.config.batch_size = 128
 wandb.config.GAMMA = 0.98
@@ -42,7 +45,7 @@ wandb.config.LEARNING_RATE = 0.005
 wandb.config.UPDATE_STEP = 10
 wandb.config.epsilon_max = 1.0
 wandb.config.epsilon_min = 0.0005
-wandb.config.validation_eps = 20
+wandb.config.validation_eps = 1
 config = wandb.config
 
 def choose_action(env, epsilon, g):
@@ -120,10 +123,16 @@ optimizer = torch.optim.Adam(Q_net.parameters(), lr=LEARNING_RATE)
 loss_MSE = nn.MSELoss().to(device)
 
 # make env
-env = gym.make("gym_graph_bin_packing:graph_vbpp-v0")
-env.reset(config.N_RUs, config.N_DUs)
-n_RUs, n_DUs = env.n_items, env.n_bins
-n_nodes = n_RUs + n_DUs
+# env = gym.make("gym_graph_bin_packing:graph_vbpp-v0")
+# env.reset(config.N_RUs, config.N_DUs)
+# n_RUs, n_DUs = env.n_items, env.n_bins
+# n_nodes = n_RUs + n_DUs
+# n_actions = env.action_space.n
+
+env = gym.make("gym_graph_node_association:graph_association-v0")
+env.reset(n_nodes=[config.N_RUs, config.N_DUs])
+n_nodes = config.N_RUs + config.N_DUs
+n_RUs, n_DUs = env.n_nodes[0], env.n_nodes[1]
 n_actions = env.action_space.n
 
 epsilon = epsilon_max
@@ -135,7 +144,7 @@ ep_rewards = []
 for ii in range(N_EPS):
     ep_reward = 0
     # reset and get the init state
-    ob = env.reset(config.N_RUs, config.N_DUs)
+    ob =env.reset(n_nodes=[config.N_RUs, config.N_DUs])
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_RU, nodes_DU = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)
@@ -222,4 +231,4 @@ for ii in range(validation_eps):
     wandb.log({"evaluation ep score": ep_score})
 
 # save Q_net
-torch.save(Q_net.state_dict(), './Q_net.pt')
+torch.save(Q_net.state_dict(), './' + wandb.run.name + '_Q_net.pt')
