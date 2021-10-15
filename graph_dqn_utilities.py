@@ -3,6 +3,7 @@ import gym
 import torch
 from collections import deque
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder
 
 import gc
 
@@ -71,45 +72,48 @@ class Memory():
 
 # env state to graph features
 def state_to_node_fea(env):
+    # get node features from env states; normalize
+    # 1. one-hot representation for node types
+    data = np.asarray([['type 0'], ['type 1']])
+    encoder = OneHotEncoder(sparse=False)
+    onehot = encoder.fit_transform(data)
+    nodes_type_0_t = onehot[0] # type
+    nodes_type_0_t = np.reshape(np.tile(nodes_type_0_t, env.n_nodes[0]), (env.n_nodes[0], -1)) # n_nodes_type_0 * feature_len
+    nodes_type_1_t = onehot[1]
+    nodes_type_1_t = np.reshape(np.tile(nodes_type_1_t, env.n_nodes[1]), (env.n_nodes[1], -1))
+    nodes_t = np.concatenate((nodes_type_0_t, nodes_type_1_t))
 
-    # node feature for RU: [0(indicates this is an RU), item_value, 1 or 0(connection status)]
-    nodes_RU_value = np.transpose(env.fea.copy())
+    # 2. type 0 values; type 1: remaining capacity
+    nodes_type_0_v = np.transpose(env.fea.copy())
+    nodes_type_1_v = np.transpose(env.remaining_capacity)
+    nodes_v = np.concatenate((nodes_type_0_v, nodes_type_1_v))
+    nodes_v = np.expand_dims(nodes_v, axis=1)
+    nodes_v = nodes_v / env.C
 
-    nodes_RU_adjacency = np.sum(env.adjacency_mat, axis=1)
-    nodes_RU_adjacency = np.expand_dims(nodes_RU_adjacency, axis=1)
+    # concatenate
+    nodes_fea = np.concatenate((nodes_t, nodes_v), axis=1)
 
-    nodes_RU_flag = np.zeros([env.n_nodes[0], 1])
-    # nodes_RU_current = np.zeros([env.n_items, 1])
-    # nodes_RU_current[env.cur_item] = 1
+    # 3. current node (in terms of MDP action) is 1, others are 0
+    current_node = np.zeros((env.n_nodes_total, 1))
+    current_node[env.cur_item] = 1
+    nodes_fea = np.concatenate((nodes_fea, current_node), axis=1)
 
-    # nodes_RU = np.concatenate([nodes_RU_flag, nodes_RU_value, nodes_RU_adjacency, nodes_RU_current], axis=1)
-    nodes_RU = np.concatenate([nodes_RU_flag, nodes_RU_value, nodes_RU_adjacency], axis=1)
+    # 4. location
+    nodes_x, nodes_y = env.nodes_x / 10, env.nodes_y / 10
+    nodes_fea = np.concatenate((nodes_fea, nodes_x, nodes_y), axis=1)
 
-    # node feature for DU: [1(indicates this is a DU), remaining capacity, load(connected RUs)]
-    nodes_DU_flag = np.ones([env.n_bins, 1])
-    nodes_DU_value = np.zeros([env.n_bins, env.vector_dim])
-
-
-    for j in range(env.n_bins):
-        for i in range(env.vector_dim):
-            items_total = np.dot(env.items[i], env.adjacency_mat[:,j])
-            nodes_DU_value[j, i] = env.bin_capacity[i] - items_total
-
-    nodes_DU_load = np.sum(env.adjacency_mat, axis=0)
-    nodes_DU_load = np.expand_dims(nodes_DU_load, axis=1)
-    nodes_DU = np.concatenate([nodes_DU_flag, nodes_DU_value, nodes_DU_load], axis=1)
-
-    return nodes_RU, nodes_DU
+    return nodes_fea
 
 def adjacency_vbpp_to_graph(adjacency_mat):
-    # this function transfers the adjacency matrix of the vector bin packing env, 
-    # which has the size [n_items, n_bins], to the format of pair of nodes [u, v]
+    # this function transfers the adjacency matrix of the node association env, 
+    # which has the size [n_type_0_nodes, n_type_1_nodes], to the format of pair of nodes [u, v]
     # for defining a graph
-    n_items = adjacency_mat.shape[0]
+    # u: source nodes; v: destination nodes
+    n_type_0_nodes = adjacency_mat.shape[0]
     a = np.sum(adjacency_mat, axis=1)
     u = np.where(a == 1)[0]
     v = np.zeros(len(u), dtype=int)
     idx = 0
     for i in u:
-        v[idx] = np.where(adjacency_mat[i, :] == 1)[0][0] + n_items
+        v[idx] = np.where(adjacency_mat[i, :] == 1)[0][0] + n_type_0_nodes
     return u, v

@@ -37,7 +37,7 @@ wandb.config.N_RUs = 20
 wandb.config.N_DUs = 4
 wandb.config.model = 'GCN'
 
-wandb.config.N_EPS = 5
+wandb.config.N_EPS = 500
 wandb.config.BUFFER_LEN = 2000
 wandb.config.batch_size = 128
 wandb.config.GAMMA = 0.98
@@ -45,21 +45,21 @@ wandb.config.LEARNING_RATE = 0.005
 wandb.config.UPDATE_STEP = 10
 wandb.config.epsilon_max = 1.0
 wandb.config.epsilon_min = 0.0005
-wandb.config.validation_eps = 1
+wandb.config.validation_eps = 20
 config = wandb.config
 
 def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
     # g is the graph
     if np.random.uniform(0,1) >= epsilon:
-        nodes_RU, nodes_Du = state_to_node_fea(env)
+        nodes_fea = state_to_node_fea(env)
         with torch.no_grad():
-            features = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+            features = torch.tensor(nodes_fea, dtype=torch.double)
             g.ndata['x'] = features
             Q_values = []
             with g.local_scope():
-                for i in range(env.n_bins):
-                    g.add_edges([env.cur_item], i+env.n_items)
+                for i in range(env.n_nodes[1]):
+                    g.add_edges([env.cur_item], i+env.n_nodes[0])
                     g = g.to(device)
                     # make sure inputs and g are on the same device
                     inputs = g.ndata['x']
@@ -74,13 +74,13 @@ def choose_action(env, epsilon, g):
 
 def model_validate():
     ep_reward = 0
-    ob = env.reset(config.N_RUs, config.N_DUs)
+    ob = env.reset(n_nodes=[config.N_RUs, config.N_DUs])
 
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
-    nodes_RU, nodes_DU = state_to_node_fea(env)
+    nodes_fea = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+    g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
 
     done = False
     while not done:
@@ -90,9 +90,9 @@ def model_validate():
         ep_reward += r
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
-        nodes_RU, nodes_DU = state_to_node_fea(env)
+        nodes_fea = state_to_node_fea(env)
         g = dgl.graph((u, v), num_nodes=n_nodes)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+        g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
         state_ = g
     return ep_reward
 
@@ -113,8 +113,8 @@ validation_eps = config.validation_eps
 memory = Memory(max_size=BUFFER_LEN)
 
 # initialize two graph neural nets: Q_net, Q_net_
-Q_net = GQN(3, 8).double().to(device=device)
-Q_net_ = GQN(3, 8).double().to(device=device)
+Q_net = GQN(6, 16).double().to(device=device)
+Q_net_ = GQN(6, 16).double().to(device=device)
 # copy parameters
 Q_net_.load_state_dict(Q_net.state_dict())
 # define optimizer
@@ -146,14 +146,14 @@ for ii in range(N_EPS):
     # reset and get the init state
     ob =env.reset(n_nodes=[config.N_RUs, config.N_DUs])
     u, v = adjacency_vbpp_to_graph(ob)
-    nodes_RU, nodes_DU = state_to_node_fea(env)
+    nodes_fea = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)
-    g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+    g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
 
     done = False
     while not done:        
         a = choose_action(env, epsilon, g)
-        a_graph = [env.cur_item, a+env.n_items] # action in graph format: u-->v, forms an edge
+        a_graph = [env.cur_item, a+env.n_nodes[0]] # action in graph format: u-->v, forms an edge
         g.add_edges([a_graph[0]], a_graph[1])
 
         state_action = g
@@ -164,9 +164,9 @@ for ii in range(N_EPS):
         ep_reward += r
         # new ob to new state
         u, v = adjacency_vbpp_to_graph(ob_)
-        nodes_RU, nodes_DU = state_to_node_fea(env)
+        nodes_fea = state_to_node_fea(env)
         g = dgl.graph((u, v), num_nodes=n_nodes)
-        g.ndata['x'] = torch.tensor(np.concatenate([nodes_RU, nodes_DU]), dtype=torch.double)
+        g.ndata['x'] = torch.tensor(nodes_fea, dtype=torch.double)
         state_ = g        
         # next state / action pairs (for all possible actions)
         state_action_ = []
@@ -231,4 +231,4 @@ for ii in range(validation_eps):
     wandb.log({"evaluation ep score": ep_score})
 
 # save Q_net
-torch.save(Q_net.state_dict(), './' + wandb.run.name + '_Q_net.pt')
+torch.save(Q_net.state_dict(), './Q_net_' + wandb.run.name + '.pt')
