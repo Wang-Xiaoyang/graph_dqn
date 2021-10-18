@@ -10,7 +10,6 @@ class GraphAssociationEnv(gym.Env):
     """
     An environment for node association problems in graph
     considering multiple constraints.
-    An overleaf document is needed for this. - 7th Oct.
     """
 
     def __init__(self):
@@ -33,6 +32,8 @@ class GraphAssociationEnv(gym.Env):
         self.mu, self.std = 3.0, 1.0 # most of samples should be larger than 0
         self.fea = np.random.normal(loc=self.mu, scale=self.std, size=self.n_nodes[0])
         self.fea = [np.max([0, i]) for i in self.fea] # non-negative features
+        # remaining capacity of type 1 nodes (value capacity)
+        self.remaining_capacity = np.ones(self.n_nodes[1]) * self.C # update in get_reward()
 
         # current item to be placed
         self.cur_item = 0
@@ -59,22 +60,22 @@ class GraphAssociationEnv(gym.Env):
         if sum(self.adjacency_mat[:, a]) >= self.load_capacity:
             # unable to perform the current action
             done = True
-            r = self.get_reward()
+            r = self.get_reward(a)
             return self.adjacency_mat, r, done, {}
 
         # check the remaining capacity of the j_th type_1 node
         items_total = np.dot(self.fea, self.adjacency_mat[:,a])
         if items_total + self.fea[self.cur_item] > self.C:
             done = True
-            r = self.get_reward()
+            r = self.get_reward(a)
             return self.adjacency_mat, r, done, {}
 
         # execute action
         self.adjacency_mat[self.cur_item, a] = 1
-        r = self.get_reward()
+        r = self.get_reward(a)
         self.cur_item += 1
 
-        if self.cur_item >= self.n_items:
+        if self.cur_item >= self.n_nodes[0]:
             self.cur_item = 0
             done = True
         
@@ -97,7 +98,7 @@ class GraphAssociationEnv(gym.Env):
             # for each type_1 node
             used = np.dot(self.fea, adjacency_mat[:,i])
             percentage = used / self.C
-            cost += np.min(2 * percentage - percentage**2 + 0.1, 1)
+            cost += np.min([2 * percentage - percentage**2 + 0.1, 1])
         return cost
 
     def get_reward(self, a):
@@ -106,9 +107,18 @@ class GraphAssociationEnv(gym.Env):
         # latency cost (distance)
         dist = self.calculate_distance(a)
         r_l = dist / self.c_light * 1.7 * 1e3 # latency in Milliseconds (ms)
+        r_l *= 1e1 # scaling parameter
         # used capacity cost
-        r_c = self.capacity_consumption(self.adjacency_mat) - self.power_consumption(self.adjacency_mat_pre)
-        return r_a + r_l + r_c
+        r_c = self.capacity_consumption(self.adjacency_mat) - self.capacity_consumption(self.adjacency_mat_pre)
+        r_c *= 5 # scaling parameter
+
+        # remaining capacity for type_1 nodes; env variable
+        for i in range(self.n_nodes[1]):
+            # for each type_1 node
+            used = np.dot(self.fea, self.adjacency_mat[:,i])
+            self.remaining_capacity[i] = self.C - used
+        
+        return r_a - r_l - r_c
 
     def reset(self, n_nodes = [20, 4], mu = 3.0, std = 1.0):
         self.n_nodes = n_nodes
