@@ -98,6 +98,7 @@ def adjacency_vbpp_to_graph(adjacency_mat):
     idx = 0
     for i in u:
         v[idx] = np.where(adjacency_mat[i, :] == 1)[0][0] + n_items
+        idx += 1
     return u, v
 
 # functions used for importing nodes files
