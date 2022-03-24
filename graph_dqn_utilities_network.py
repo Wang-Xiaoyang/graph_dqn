@@ -59,7 +59,8 @@ def copy_graph(g, fea_name):
 
 def self_loop_graph(g, a):
     list_nodes = list(range(g.num_nodes()))
-    g = dgl.add_edges(g, list_nodes[:-a], list_nodes[:-a])
+    g = dgl.add_edges(g, list_nodes[:-a], list_nodes[:-a]) # in this setting, O nodes (core nodes) can only be connected by itself; this has
+                                                            # been done during env reset; here [:-a] removes the O nodes, to avoid doulbe self-loop on O nodes
     return g
 
 # replay buffer using deque

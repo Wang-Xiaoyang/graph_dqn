@@ -93,6 +93,13 @@ def state_to_node_fea(env):
     # concatenate
     nodes_fea = np.concatenate((nodes_t, nodes_v), axis=1)
 
+    # for BBU pooling
+    # UEs per site
+    num_UEs = np.concatenate((env.UE_per_site, np.zeros(env.n_nodes[1])), axis=0)
+    num_UEs = np.expand_dims(num_UEs, axis=1)
+    num_UEs = num_UEs / 1e2
+    nodes_fea = np.concatenate((nodes_fea, num_UEs), axis=1)
+
     # 3. current node (in terms of MDP action) is 1, others are 0
     current_node = np.zeros((env.n_nodes_total, 1))
     current_node[env.cur_item] = 1

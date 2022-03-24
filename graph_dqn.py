@@ -29,12 +29,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # wandb.init(entity="xiaoyang",
 #             project="graph-q-learning-compare")
 
-wandb.init(entity="xiaoyang",
-                project="graph-q-learning-dynamic")
+# env: gym-graph_node_association
+# wandb.init(entity="xiaoyang",
+#                 project="graph-q-learning-dynamic")
+
+# BBU pooling
+wandb.init(entity='xiaoyang',
+            project='graph-q-learning-bbu-pooling')
 
 #env config
-wandb.config.N_RUs = 20
-wandb.config.N_DUs = 4
+# wandb.config.N_RUs = 20
+# wandb.config.N_DUs = 4
 wandb.config.model = 'GCN'
 
 wandb.config.N_EPS = 500
@@ -74,7 +79,7 @@ def choose_action(env, epsilon, g):
 
 def model_validate():
     ep_reward = 0
-    ob = env.reset(n_nodes=[config.N_RUs, config.N_DUs])
+    ob = env.reset()
 
     # observation to graph
     u, v = adjacency_vbpp_to_graph(ob)
@@ -113,8 +118,8 @@ validation_eps = config.validation_eps
 memory = Memory(max_size=BUFFER_LEN)
 
 # initialize two graph neural nets: Q_net, Q_net_
-Q_net = GQN(6, 16).double().to(device=device)
-Q_net_ = GQN(6, 16).double().to(device=device)
+Q_net = GQN(7, 16).double().to(device=device)
+Q_net_ = GQN(7, 16).double().to(device=device)
 # copy parameters
 Q_net_.load_state_dict(Q_net.state_dict())
 # define optimizer
@@ -129,10 +134,11 @@ loss_MSE = nn.MSELoss().to(device)
 # n_nodes = n_RUs + n_DUs
 # n_actions = env.action_space.n
 
-env = gym.make("gym_graph_node_association:graph_association-v0")
-env.reset(n_nodes=[config.N_RUs, config.N_DUs])
-n_nodes = config.N_RUs + config.N_DUs
+# env = gym.make("gym_graph_node_association:graph_association-v0")
+env = gym.make("gym_graph_bbu_pooling:graph_bbu_pooling-v0")
+env.reset()
 n_RUs, n_DUs = env.n_nodes[0], env.n_nodes[1]
+n_nodes = n_RUs + n_DUs
 n_actions = env.action_space.n
 
 epsilon = epsilon_max
@@ -144,7 +150,7 @@ ep_rewards = []
 for ii in range(N_EPS):
     ep_reward = 0
     # reset and get the init state
-    ob =env.reset(n_nodes=[config.N_RUs, config.N_DUs])
+    ob =env.reset()
     u, v = adjacency_vbpp_to_graph(ob)
     nodes_fea = state_to_node_fea(env)
     g = dgl.graph((u, v), num_nodes=n_nodes)
@@ -224,6 +230,7 @@ for ii in range(N_EPS):
     # ep_rewards.append(ep_reward)
     # log results after each game episode
     wandb.log({"ep score": ep_reward, "env step": step})
+    print(ep_reward)
 
 print("++++++++ Model Evaluation +++++++++++++++")
 for ii in range(validation_eps):

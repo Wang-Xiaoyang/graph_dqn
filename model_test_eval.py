@@ -231,11 +231,12 @@ latency_list = []
 easting = df['easting']
 northing = df['northing']
 for i in range(len(ob_)):
-    a = list(ob_[i]).index(1)
-    link = (df['# id'][i], df['# id'][a + config.n_nodes[0]])
-    links.append(link)
-    latency = calculate_latency(easting, northing, (i, a+config.n_nodes[0]))
-    latency_list.append(latency)
+    if sum(ob_[i]) > 0:
+        a = list(ob_[i]).index(1)
+        link = (df['# id'][i], df['# id'][a + config.n_nodes[0]])
+        links.append(link)
+        latency = calculate_latency(easting, northing, (i, a+config.n_nodes[0]))
+        latency_list.append(latency)
 
 # save file
 df_links = pd.DataFrame()
@@ -250,15 +251,16 @@ link_s, link_d = [], []
 link_s_type, link_d_type = [], []
 
 for i in range(len(ob_)):
-    a = list(ob_[i]).index(1)
-    link_source = nodes_output['# id'][i]
-    link_source_type = nodes_output['node type'][list(nodes_output['# id']).index(link_source)]
-    link_destination = nodes_output['# id'][a + config.n_nodes[0]]
-    link_destination_type = nodes_output['node type'][list(nodes_output['# id']).index(link_destination)]
-    link_s.append(link_source)
-    link_s_type.append(link_source_type)
-    link_d.append(link_destination)
-    link_d_type.append(link_destination_type)
+    if sum(ob_[i]) > 0:
+        a = list(ob_[i]).index(1)
+        link_source = nodes_output['# id'][i]
+        link_source_type = nodes_output['node type'][list(nodes_output['# id']).index(link_source)]
+        link_destination = nodes_output['# id'][a + config.n_nodes[0]]
+        link_destination_type = nodes_output['node type'][list(nodes_output['# id']).index(link_destination)]
+        link_s.append(link_source)
+        link_s_type.append(link_source_type)
+        link_d.append(link_destination)
+        link_d_type.append(link_destination_type)
 
 # get power consumption and resource utilisation for destination nodes
 pow_con_list, resource_util_list = [], []
