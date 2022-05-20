@@ -358,77 +358,17 @@ plt.plot(power_day)
 # """
 # # Trained agent
 # """
-# run_name = 'astral-fire-494'
-# run_name = 'pleasant-dream-497'  # good
-# run_name = 'woven-glitter-499' # ok
-
-# central_area_b
-# run_name = 'quiet-mountain-2' # good
-# run_name = 'autumn-aardvark-4' # ok
-# run_name = 'rose-sun-11' # ok
-# run_name = 'super-star-13' # good
-# run_name = 'volcanic-sky-12' # good
-# run_name = 'lunar-wood-15' # ok, 8 features
-
-# run_name = 'fast-pyramid-150' # probably can use
-# run_name = 'ancient-mountain-156_400' # ok
-
-# run_name = 'wobbly-cosmos-160_400'
-
-# run_name = 'peachy-silence-182'
-
-# Trial
-# run_name_list = ['']
-
 #############################
-# balance
-run_name_list = ['noble-durian-233', 'noble-durian-233_600', 'noble-durian-233_650', 'noble-durian-233_700',
-                'quiet-cloud-234',
-                'super-silence-236', 'super-silence-236_600',
-                'fanciful-sound-241', 'fanciful-sound-241_600',
-                'icy-silence-243', 'icy-silence-243_350',
-                'comfy-rain-244']
+# balanced agent
+## this is the balanced results in the paper
+run_name_list = ['super-silence-236']
 
-# run_name_list = ['elated-dew-231', 'elated-dew-231_400', 'elated-dew-231_450', 'elated-dew-231_550',
-#                 'vague-donkey-230',
-#                 'snowy-flower-228', 'snowy-flower-228_700',
-#                 'proud-eon-226',
-#                 'fresh-galaxy-220', 'fresh-galaxy-220_600', 'fresh-galaxy-220_900',
-#                 'dainty-puddle-219',
-#                 'electric-pyramid-216', 'electric-pyramid-216_500',
-#                 'lilac-surf-214',
-#                 'glorious-hill-213', 'glorious-hill-213_750']
+# power agent
+## this is the power result in the paper
+run_name_list = ['genial-snow-208_250']
 
-# power
-# run_name_list = ['ethereal-field-212',
-#                 'sleek-waterfall-211',
-#                 'fresh-feather-210', 'fresh-feather-210_300',
-#                 'genial-snow-208', 'genial-snow-208_300', 'genial-snow-208_250',
-#                 'zany-sea-206', 'zany-sea-206_450',
-#                 'divine-snowball-203',
-#                 'earnest-dew-196', 'earnest-dew-196_550',
-#                 'quiet-hill-195', 'quiet-hill-195_900',
-#                 'misty-dust-187', 'misty-dust-187_850',
-#                 'peachy-silence-182',
-#                 'young-deluge-179',
-#                 'legendary-jazz-178',
-#                 'distinctive-shape-177', 'distinctive-shape-177_800', 'distinctive-shape-177_850', 'distinctive-shape-177_900',
-#                 'honest-cosmos-175', 'honest-cosmos-175_350',
-#                 ]
-
-# run_name_list = ['tough-spaceship-204', 'tough-spaceship-204_400',
-#                 'radiant-cloud-198', 'radiant-cloud-198_400',
-#                 'northern-wave-193', 
-#                 'earthy-river-192', 'earthy-river-192_800',
-#                 'elated-violet-189', 'elated-violet-189_950',
-#                 'apricot-disco-167_750', 'apricot-disco-167_800',
-#                 'wobbly-cosmos-160_600']
 
 result_all = np.zeros((len(run_name_list), 4))
-
-# path = './Q_net_' + run_name + '.pt'
-# Q_net = GQN_2(7, 16).double().to(device=device)
-# Q_net.load_state_dict(torch.load(path))
 
 def choose_action(env, epsilon, g):
     # choose action using epsilon greedy given the current ob
@@ -511,7 +451,6 @@ elif mode == 'weekends':
 for cur_model in range(len(run_name_list)):
 
     run_name = run_name_list[cur_model]
-    run_name = 'dashing-sound-9'
     path = './Q_net_' + run_name + '.pt'
     Q_net = GQN_2(7, 16).double().to(device=device)
     Q_net.load_state_dict(torch.load(path))
