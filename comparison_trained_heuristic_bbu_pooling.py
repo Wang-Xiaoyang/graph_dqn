@@ -26,6 +26,8 @@ from graph_dqn_utilities import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+save_result = False
+
 env = gym.make("gym_graph_bbu_pooling:graph_bbu_pooling-v0")
 env.reset()
 n_RUs, n_DUs = env.n_nodes[0], env.n_nodes[1]
@@ -173,6 +175,8 @@ if mode == 'weekdays':
 elif mode == 'weekends':
     days_ = list(range(4, 6))
 
+method = 'UEfair'
+
 for t in days_:
     date = date_list[t]
     for i in range(24):
@@ -182,6 +186,9 @@ for t in days_:
         load_DI_day.append(load_DI)
         user_DI_day.append(user_DI)
         ep_reward_day.append(ep_reward)
+
+        if save_result:
+            save_csv_results(env, method, date, '{:02}'.format(i))
 
 print('average for p_fairness_agent agent: ', np.mean(ep_reward_day), np.mean(latency_day), np.mean(power_day), np.mean(load_DI_day), np.mean(user_DI_day))
 
@@ -230,6 +237,8 @@ if mode == 'weekdays':
 elif mode == 'weekends':
     days_ = list(range(4, 6))
 
+method = 'lb'
+
 for t in days_:
     date = date_list[t]
     for i in range(24):
@@ -239,6 +248,9 @@ for t in days_:
         load_DI_day.append(load_DI)
         user_DI_day.append(user_DI)
         ep_reward_day.append(ep_reward)
+
+        if save_result:
+            save_csv_results(env, method, date, '{:02}'.format(i))
 
 print('average for p_load_balance agent: ', np.mean(ep_reward_day), np.mean(latency_day), np.mean(power_day), np.mean(load_DI_day), np.mean(user_DI_day))
 
@@ -284,6 +296,8 @@ if mode == 'weekdays':
 elif mode == 'weekends':
     days_ = list(range(4, 6))
 
+method = 'latency'
+
 for t in days_:
     date = date_list[t]
     for i in range(24):
@@ -293,6 +307,9 @@ for t in days_:
         load_DI_day.append(load_DI)
         user_DI_day.append(user_DI)
         ep_reward_day.append(ep_reward)
+
+        if save_result:
+            save_csv_results(env, method, date, '{:02}'.format(i))
 
 print('average for p_latency agent: ', np.mean(ep_reward_day), np.mean(latency_day), np.mean(power_day), np.mean(load_DI_day), np.mean(user_DI_day))
 
@@ -341,6 +358,8 @@ if mode == 'weekdays':
 elif mode == 'weekends':
     days_ = list(range(4, 6))
 
+method = 'power'
+
 for t in days_:
     date = date_list[t]
     for i in range(24):
@@ -351,6 +370,9 @@ for t in days_:
         user_DI_day.append(user_DI)
         ep_reward_day.append(ep_reward)
 
+        if save_result:
+            save_csv_results(env, method, date, '{:02}'.format(i))
+
 print('average for p_power agent: ', np.mean(ep_reward_day), np.mean(latency_day), np.mean(power_day), np.mean(load_DI_day), np.mean(user_DI_day))
 plt.figure()
 plt.plot(power_day)
@@ -359,13 +381,14 @@ plt.plot(power_day)
 # # Trained agent
 # """
 #############################
+methods = ['GQNbalanced', 'GQNpower']
 # balanced agent
 ## this is the balanced results in the paper
 run_name_list = ['super-silence-236']
 
 # power agent
-## this is the power result in the paper
-run_name_list = ['genial-snow-208_250']
+# this is the power result in the paper
+# run_name_list = ['genial-snow-208_250']
 
 
 result_all = np.zeros((len(run_name_list), 4))
@@ -448,6 +471,8 @@ if mode == 'weekdays':
 elif mode == 'weekends':
     days_ = list(range(4, 6))
 
+method = methods[0]
+
 for cur_model in range(len(run_name_list)):
 
     run_name = run_name_list[cur_model]
@@ -468,6 +493,10 @@ for cur_model in range(len(run_name_list)):
             user_DI_day.append(user_DI)
             ep_reward_day.append(ep_reward)
 
+            if save_result:
+                save_csv_results(env, method, date, '{:02}'.format(i))
+            
+
     print('average for trained: ', np.mean(ep_reward_day), np.mean(latency_day), np.mean(power_day), np.mean(load_DI_day), np.mean(user_DI_day))
     # plt.plot(power_day, 'bo')
     # plt.show()
@@ -477,17 +506,4 @@ for cur_model in range(len(run_name_list)):
     result_all[cur_model, 2] = np.mean(load_DI_day)
     result_all[cur_model, 3] = np.mean(user_DI_day)
 
-pd.DataFrame(result_all).to_csv("./models_all.csv")
-
-
-# # write file
-# df_links_2 = pd.DataFrame()
-# df_links_2['source nodes'] = link_s
-# df_links_2['destination nodes'] = link_d
-# df_links_2['source nodes type'] = link_s_type
-# df_links_2['destination nodes type'] = link_d_type
-# df_links_2['latency(ms)'] = latency_list
-# df_links_2['destination node power consumption'] = pow_con_list
-# df_links_2['destination node resource utilisation'] = resource_util_list
-
-# df_links_2.to_csv(folder + 'heuristic_agent_results_links_2.csv')
+# pd.DataFrame(result_all).to_csv("./models_all.csv")

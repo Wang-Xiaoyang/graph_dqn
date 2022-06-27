@@ -257,10 +257,8 @@ for ii in range(N_EPS):
         cur_min = power_min[env.t]
         # r_c = (env.power_c - cur_min) / cur_min
         r_c = (cur_power - pre_power) / cur_min # use cur_min to normalise power consumption
+        
         if r_c != 0:
-            # power_min[env.t] = np.min([env.power_c, cur_min])
-            # r -= np.log(r_c * 1e3)
-            # r -= r_c * 10
             ## case 2: balance
             r -= np.log(r_c + config.power_par)
             ## case 1: power only

@@ -33,9 +33,9 @@ wandb.init(entity="xiaoyang",
 
 """
 Import dataset to decide env configurations.
-Dataset 1: bristol_nodes_1.csv 
+Dataset 1: data_1/bristol_nodes_1.csv 
 """
-df = pd.read_csv('bristol_nodes_1.csv')
+df = pd.read_csv('data_1/bristol_nodes_1.csv')
 # get n_nodes
 nodes_types = ['T', 'M', 'O']
 n_nodes = []
@@ -263,6 +263,6 @@ for ii in range(config.validation_eps):
 
 
 timestr = time.strftime("%Y%m%d_%H%M%S")
-name = './' + timestr + '_Q_net.pt'
+name = './' + wandb.run.name + '_Q_net.pt'
 # save Q_net
 torch.save(Q_net.state_dict(), name)

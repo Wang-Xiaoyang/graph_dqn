@@ -111,7 +111,7 @@ class GraphVbppNetEnv(gym.Env):
         # power consumption cost
         r_p = self.power_consumption(self.bin_capacity_n) - self.power_consumption(self.bin_capacity_pre)
         # r_p *= 5 # scaling factor
-        # r_p *= 10 # performance decay
+        # r_p *= 10 # 
         r_p *= 3
         # deployment cost
         r_d = self.compute_deployment(self.adjacency_mat) - self.compute_deployment(self.adjacency_mat_pre)
@@ -180,6 +180,8 @@ class GraphVbppNetEnv(gym.Env):
     def compute_deployment(self, adjacency_mat):
         """
         Calculate the compute deployment cost given adjacency matrix.
+        We prefer to deploy UE requirements on O nodes (core nodes) - the cost *= 0.1
+        We do not prefer to deploy UE requirements on M nodes (metro nodes) - the cost*= 0.2
         """
         activated = np.sum(adjacency_mat, axis=0) > 0
         deployment_cost = sum(activated[0:self.n_tier_2]) * 0.2 + sum(activated[self.n_tier_2:]) * 0.1

@@ -109,12 +109,13 @@ class GraphBBuPoolingEnv(gym.Env):
         p = 10 ** (dBm_value / 10)
         return p * 1e-3
 
-    def get_RU_feats(self, t, type):
+    def get_RU_feats(self, t, type, noise = False):
         # load RU requirements; get a list containing RU features
         # t: time, between 0 and 23 (hour)
         # type: cpu or traffic, depending on which indicator do we use as RU requirements
         list_RUs = list(self.set_RUs['siteid'])
         self.fea = []
+
         if type == 'CPU_LOAD_MAX':
             for i in range(len(list_RUs)):
                 data = self.data_cpu_all[i]
@@ -122,11 +123,19 @@ class GraphBBuPoolingEnv(gym.Env):
                 # empty dataset - try to approximate using the average
                 if len(feat) == 0:
                     # self.fea.append(0.0)
-                    self.fea.append(np.mean(self.fea))
+                    to_append = np.mean(self.fea)                  
                 elif t >= len(feat):
-                    self.fea.append(np.mean(self.fea))
+                    to_append = np.mean(self.fea)
                 else:
-                    self.fea.append(feat[t])            
+                    to_append = feat[t]
+
+                if noise == True:
+                    # add noise: sim2real
+                    n_add = 5.0 + np.random.randn(1)[0]
+                    to_append += n_add  
+
+                self.fea.append(to_append)
+
         return self.fea
 
     def step(self, a):
@@ -285,8 +294,7 @@ class GraphBBuPoolingEnv(gym.Env):
         # return r_a - r_l + r_bonus - r_lb - r_fairness
         # return -np.log(r_l) + r_bonus - r_lb - r_fairness
         # return r_a * 0.5 + r_bonus - r_lb - r_fairness
-        # return r_bonus - r_lb - r_fairness
-        return - r_fairness
+        return r_bonus - r_lb - r_fairness
 
     def available_action(self):
         # auxiliary function: get all available actions for the current node
@@ -300,7 +308,7 @@ class GraphBBuPoolingEnv(gym.Env):
                     available_a.append(a)
         return available_a         
 
-    def reset(self, t=-1, date=-1):
+    def reset(self, noise_fea=False, t=-1, date=-1):
         np.random.seed()
         if t == -1:
             self.t = np.random.randint(24)
@@ -318,7 +326,7 @@ class GraphBBuPoolingEnv(gym.Env):
         # load number of UEs
         self.UE_per_site = self.load_UE_num(self.t)       
         # 1. CPU_max
-        self.get_RU_feats(self.t, type='CPU_LOAD_MAX')
+        self.get_RU_feats(self.t, type='CPU_LOAD_MAX', noise=noise_fea)
         # remaining capacity of type 1 nodes (value capacity)
         self.remaining_capacity = np.ones(self.n_nodes[1]) * self.C # update in get_reward()
 
